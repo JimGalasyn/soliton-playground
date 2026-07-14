@@ -1,0 +1,15 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "soliton-playground"
+version = "0.1.0"
+description = "Sandbox for topological structures in simulated media — play, not science"
+requires-python = ">=3.10"
+dependencies = ["numpy", "matplotlib"]
+# jax-solitons is installed from a sibling checkout (see README) until it ships
+# to an index: pip install -e ../jax-solitons
+
+[tool.setuptools.packages.find]
+where = ["src"]
