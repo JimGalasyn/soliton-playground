@@ -2,6 +2,16 @@
 
 ## Gates (declared before running, applied to every candidate)
 
+0. **Seed gate** (before evolving): boundary-shell density ≈ vacuum
+   (1 − n < 0.02) on every axis the entrant is *localized* in, and wrap phase
+   mismatch < 0.05 rad, checked only where the boundary planes carry bulk
+   density (`gpe_lab.seed_gate(axes=...)`). Added after the opener's run 1,
+   where a non-periodic ring phase laid a boundary sheet that contaminated
+   the box and inflated the ledger drift 60× (jax-solitons#67); the axes
+   parameter added after the gate misfired on planar solitons, which
+   legitimately cross the transverse boundaries and carry branch-cut phase
+   noise in their cores. A dirty seed invalidates the run before physics
+   starts; an extended entrant declares its localization axes up front.
 1. **Survival**: lifetime ≥ N characteristic periods of the object itself
    (N declared per campaign; default 50).
 2. **Ledger**: energy drift within the integrator's measured floor; every loss
