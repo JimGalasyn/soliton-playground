@@ -131,9 +131,22 @@
   left for this bin in GPE is essentially the translationally invariant straight
   line, which cannot self-approach — not a zoo.
 
+  There is also **no knotted minimizer for relaxation to find**. GPE
+  imaginary-time descent does not untie a knot, it annihilates the vortices: on
+  the Milnor trefoil, 8000 steps take E_tot 3020 → 265, depleted cells
+  36818 → 732 and the incompressible (vortex) energy 651 → 101. The ground state
+  at fixed norm is the uniform condensate, so vortices are excited states with
+  nowhere to sit — GPE has nothing knotted to be stable *in*, which is the
+  mechanism behind "GPE by itself always unknots".
+
   Populating `protected` therefore requires a preset whose charge is a genuine
   homotopy invariant, i.e. the Faddeev–Skyrme wing, where Q_H ∈ π₃(S²) = ℤ cannot
-  change under continuous evolution. **Open and untested:** every Faddeev result
+  change under continuous evolution — and where knots *are* minimizers, so
+  relaxation has something to converge to. Prior program results (outside this
+  repo) established Faddeev–Skyrme trefoil and cinquefoil stability under
+  relaxation, and found that Hopf-linked pairs cannot be reached by descent at
+  all — they must be "born linked", which is itself a direct signature of the
+  invariant: continuous descent cannot cross linking classes. **Open and untested:** every Faddeev result
   the program inherited came from *relaxation* (gradient flow downhill, which by
   construction cannot exhibit a dynamical instability). Whether Q_H protects a
   knot under real-time evolution has not been measured, and until it is, no
