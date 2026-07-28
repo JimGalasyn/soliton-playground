@@ -108,6 +108,31 @@ def planar_soliton_pair_seed(grid: BoxGrid, z1: float, z2: float,
     return jnp.asarray(psi, dtype=jnp.complex128)
 
 
+# ------------------------------------------------- characteristic period (gate 1)
+# Bogoliubov sound speed in this preset. The module convention asserts c = 1;
+# measured empirically at 1.0446 (N=256, L=128) and 1.0714 (N=128, L=64) by
+# tracking a small density pulse, the ~5% excess being peak-quantization at
+# dx = 0.5. Pinned by tests/test_characteristic_period.py so the clock gate 1
+# depends on is a measured quantity and not an assumed one.
+C_SOUND = 1.0
+
+
+def characteristic_period(structure_length: float, c: float = C_SOUND) -> float:
+    """Time for a wave to traverse the entire structure once: tau = L / c.
+
+    The clock gate 1 counts in. For an extended entrant the length is its own
+    traced extent — for a closed vortex curve, the full arc length, since
+    traversing a loop once means going all the way around it.
+
+    Note what this implies for a DECAYING entrant. The trefoil's curve is
+    155.5 xi, so tau ~ 155.5, while it unties by t ~ 20-40: a quarter of one
+    traversal. Its whole 80-unit run is half a period. A survival THRESHOLD is
+    therefore not something such an entrant can be measured against — see the
+    gate 1 note in CENSUS_PROTOCOL.md.
+    """
+    return structure_length / c
+
+
 # ----------------------------------------------------------------- calorimeter
 def helmholtz_energies(grid: BoxGrid, u):
     """Split a vector field u = (ux, uy, uz) into solenoidal and irrotational

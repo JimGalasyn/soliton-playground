@@ -14,6 +14,37 @@
    starts; an extended entrant declares its localization axes up front.
 1. **Survival**: lifetime ≥ N characteristic periods of the object itself
    (N declared per campaign; default 50).
+
+   **The characteristic period is the time for a wave to traverse the entire
+   structure once**, τ = L/c on the entrant's own traced extent — for a closed
+   vortex curve, its full arc length, since traversing a loop once means going all
+   the way around (`gpe_lab.characteristic_period`; c is measured, not assumed,
+   and pinned by `tests/test_characteristic_period.py`).
+
+   **This gate is REPORTED, not gated, for any entrant with an identified decay
+   channel.** A survival threshold presupposes an object whose persistence is in
+   question; applying it to something that decays by construction is a category
+   error, and the trefoil is the case that showed it. Its curve is 155.5 ξ, so
+   τ ≈ 155.5, and it unties by t ≈ 20–40 — a quarter of one traversal, with its
+   whole 80-unit production run amounting to 0.51 periods. Against the default
+   N = 50 it falls short by ~194×, and no achievable run length changes that,
+   because the object is gone inside one period. For such entrants, record the
+   lifetime *in own-period units* and let it place the entrant between the bins.
+
+   **Where the threshold does belong: the metastable/unstable boundary.** Those
+   two bins differ precisely on "long-lived" versus "dies on its own timescale",
+   so N is the number that separates them and must be declared per object class.
+   Note the consequence for the trefoil, which is currently binned `metastable`:
+   at 0.03–0.26 periods it dies well inside a single traversal of itself, which on
+   this clock reads as `unstable`. The bin is therefore clock-dependent — a local
+   reconnection time (ξ/c ≈ 1, giving ~5–40 periods) would keep it metastable —
+   so **the clock must be named in the bestiary entry alongside the bin**, or the
+   bin means nothing.
+
+   Also unmet by everything so far: the ring products. Their arc lengths are
+   17–23 ξ, so τ ≈ 17–23, and they have been observed from t ≈ 40 to 80, i.e.
+   ~2 of their own periods. Reaching 50 would need T ≈ 900–1200, about 12–15× the
+   current run.
 2. **Ledger**: energy drift within the integrator's measured floor; every loss
    accounted by the calorimeter (radiated sector), not the grid. Four rules
    learned from the trefoil's gate-2 run:
