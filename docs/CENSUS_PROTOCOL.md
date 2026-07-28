@@ -15,7 +15,37 @@
 1. **Survival**: lifetime ≥ N characteristic periods of the object itself
    (N declared per campaign; default 50).
 2. **Ledger**: energy drift within the integrator's measured floor; every loss
-   accounted by the calorimeter (radiated sector), not the grid.
+   accounted by the calorimeter (radiated sector), not the grid. Four rules
+   learned from the trefoil's gate-2 run:
+   - **"Measured floor" means a dt sweep, and its content is dt-INDEPENDENCE.**
+     If refining dt does not reduce the drift, the drift is spatial truncation
+     and the integrator is already at its floor. Merely comparing a drift to a
+     floor measured from the same run at the same dt is circular; the sweep is
+     what makes it a measurement. The trefoil's drift moved 0.1% across a 16x dt
+     refinement, so it is entirely spatial.
+   - **Never compare drifts across energy conventions.** `GPEKineticTerm` uses
+     forward differences; the calorimeter is spectral. They differ by O(dx) and
+     drift ~10x differently (6.8e-3 vs 6.7e-4 for the same run). A first version
+     of the trefoil's gate compared a spectral drift against a forward-difference
+     floor and "passed" on the convention gap. Match the convention *and* the
+     time interval.
+   - **A sector closure that sums to the total by construction is a tautology.**
+     Since E_i + E_c + E_q + E_int is E_tot identically, the closure residual is
+     just the drift re-expressed. The clause that actually distinguishes
+     "radiated sector" from "the grid" is whether the sound sits at RESOLVED
+     wavenumbers (`energy_partition`'s `E_c_highk_frac`) — energy accumulating
+     near k_max is headed into truncation, not into the medium.
+   - **Know the calorimeter's resolution before claiming a loss is accounted.**
+     Its own sum-rule residual was 7.98, about 4x the 2.03 of total energy change
+     it would have had to attribute. It resolves sector transfers (O(100-1000))
+     and cannot audit the drift (O(1)). "Every loss accounted" is then only the
+     weaker claim: no evidence of grid loss, and the loss is below what the
+     instrument can attribute. Say which one you mean.
+
+   **A periodic box recycles its own sound.** E_c is instantaneous sound content,
+   NOT cumulative radiation: phonons cannot leave, so E_i and E_c oscillate in
+   antiphase as sound is reabsorbed. A radiated *budget* needs an absorbing far
+   field, which this engine does not yet have.
 3. **Charge retention**: topological/winding numbers (event-graph charges)
    unchanged, or their change logged as an explicit decay event.
 4. **Kick test**: 10% perturbation → returns to the same basin (position/shape

@@ -108,6 +108,119 @@ def planar_soliton_pair_seed(grid: BoxGrid, z1: float, z2: float,
     return jnp.asarray(psi, dtype=jnp.complex128)
 
 
+# ----------------------------------------------------------------- calorimeter
+def helmholtz_energies(grid: BoxGrid, u):
+    """Split a vector field u = (ux, uy, uz) into solenoidal and irrotational
+    energies. Returns (E_incompressible, E_compressible, E_total).
+
+    Exact by Parseval: the two projections are orthogonal in k-space, so the
+    energies add with no cross term.
+
+    ASSUMES u IS PERIODIC. That is not a formality — it is the trap this module
+    exists to avoid. A single straight vortex in a box is NOT periodic (its phase
+    winds by 2 pi), and an FFT of it puts an O(1/dx) discontinuity at the box
+    face which lands in BOTH sectors and grows under refinement, looking exactly
+    like a convergence failure of the physics. Feed this only fields that pass
+    seed_gate; the wrap-clean mirror-pair seeds in this module are pairs
+    precisely so that they do.
+    """
+    N, dx = grid.N, grid.dx
+    k = 2.0 * np.pi * np.fft.fftfreq(N, d=dx)
+    kx, ky, kz = k[:, None, None], k[None, :, None], k[None, None, :]
+    k2 = kx**2 + ky**2 + kz**2
+    uk = [np.fft.fftn(c) for c in u]
+    kdotu = kx * uk[0] + ky * uk[1] + kz * uk[2]
+    # k=0 is the uniform-flow mode: solenoidal and irrotational at once, so the
+    # split is ambiguous there. Assigned to incompressible by leaving it out of
+    # the compressible projection; in a box with no net flow it is ~0 anyway.
+    safe = np.where(k2 > 0, k2, 1.0)
+    fac = np.where(k2 > 0, kdotu / safe, 0.0)
+    pref = 0.5 * dx**3 / N**3
+    dens_c = sum(np.abs(kk * fac) ** 2 for kk in (kx, ky, kz))
+    E_c = pref * float(np.sum(dens_c))
+    E_flow = pref * sum(float(np.sum(np.abs(c) ** 2)) for c in uk)
+    # Fraction of the SOUND energy living above half-Nyquist. This is the test
+    # that separates "radiated into the medium" from "on its way into the grid":
+    # physical phonons from reconnection sit at k ~ 1/xi, well resolved, while
+    # energy piling up near k_max is about to be truncated away and would show
+    # up as drift, not as sound. A rising high-k fraction is the warning sign.
+    k_nyq = np.pi / dx
+    hi = k2 > (0.5 * k_nyq) ** 2
+    E_c_hi = pref * float(np.sum(dens_c[hi]))
+    return E_flow - E_c, E_c, E_flow, (E_c_hi / E_c if E_c > 0 else 0.0)
+
+
+def energy_partition(grid: BoxGrid, psi, g=G, delta=1e-10):
+    """Nore-Abid-Brachet calorimeter: split the GPE energy into four sectors.
+
+    Writing psi = sqrt(n) e^{i phi}, the identity |grad psi|^2 = |grad sqrt(n)|^2
+    + n |grad phi|^2 splits the kinetic energy into a quantum-pressure part and a
+    flow part. The flow part carries the density-weighted velocity
+    u = sqrt(n) grad phi, and Helmholtz-splitting u into a solenoidal and an
+    irrotational piece separates the two things gate 2 needs to tell apart:
+
+      E_i    incompressible flow, div u = 0    -> BOUND in the vortex lines
+      E_c    compressible flow, curl u = 0     -> SOUND, the radiated sector
+      E_q    quantum pressure, 0.5|grad sqrt(n)|^2
+      E_int  interaction, 0.5 g (n-1)^2
+
+    E_c is the phonon budget. This is what makes "every loss accounted by the
+    calorimeter (radiated sector), not the grid" a measurement instead of an
+    assertion: energy leaving E_i must show up in E_c.
+
+    u is computed as Im(conj(psi) grad psi)/sqrt(n + delta) rather than from an
+    unwrapped phase, which would be singular at the cores. u itself is finite
+    there (n ~ r^2 and grad phi ~ 1/r, so u ~ r * 1/r), but both numerator and
+    denominator vanish, hence delta. The sum rule below is what validates that
+    choice: if delta were distorting the cores, E_q + E_flow would stop matching
+    the spectral kinetic energy.
+
+    SPECTRAL, whereas the ledger's GPEKineticTerm uses forward differences. The
+    two therefore disagree by a discretization term, reported as
+    `kinetic_fd_minus_spectral` rather than papered over. Compare drifts and
+    transfers within one convention, never across the two.
+
+    Returns a dict of the four sectors plus:
+      E_flow      = E_i + E_c
+      E_tot       = E_q + E_i + E_c + E_int   (spectral total)
+      sum_rule_residual  E_kin_spectral - (E_q + E_flow); the calorimeter's OWN
+                  closure error, distinct from the integrator's drift
+      kinetic_fd_minus_spectral   ledger convention minus spectral
+      E_c_highk_frac  fraction of E_c above half-Nyquist: the "sound vs grid"
+                  discriminator, since energy piling up near k_max is about to be
+                  truncated rather than radiated
+    """
+    arr = np.asarray(psi)
+    n = np.abs(arr) ** 2
+    N, dx = grid.N, grid.dx
+    vol = dx**3
+    k = 2.0 * np.pi * np.fft.fftfreq(N, d=dx)
+    kx, ky, kz = k[:, None, None], k[None, :, None], k[None, None, :]
+    k2 = kx**2 + ky**2 + kz**2
+
+    pk = np.fft.fftn(arr)
+    dpsi = [np.fft.ifftn(1j * kk * pk) for kk in (kx, ky, kz)]
+    E_kin_spec = 0.5 * sum(float(np.sum(np.abs(d) ** 2)) for d in dpsi) * vol
+
+    root = np.sqrt(n + delta)
+    u = [np.imag(np.conj(arr) * d) / root for d in dpsi]
+
+    sk = np.fft.fftn(np.sqrt(n))
+    E_q = 0.5 * sum(float(np.sum(np.abs(np.fft.ifftn(1j * kk * sk)) ** 2))
+                    for kk in (kx, ky, kz)) * vol
+
+    E_i, E_c, E_flow, E_c_hi_frac = helmholtz_energies(grid, u)
+    E_int = 0.5 * g * float(np.sum((n - 1.0) ** 2)) * vol
+
+    kin_fd, _ = make_energy(grid)(jnp.asarray(arr))
+    return dict(E_i=E_i, E_c=E_c, E_q=E_q, E_int=E_int, E_flow=E_flow,
+                E_c_highk_frac=E_c_hi_frac,
+                E_tot=E_q + E_i + E_c + E_int,
+                E_kin_spectral=E_kin_spec,
+                sum_rule_residual=E_kin_spec - (E_q + E_flow),
+                kinetic_fd_minus_spectral=float(kin_fd) - E_kin_spec)
+
+
 # ----------------------------------------------------------------- kick (gate 4)
 def smooth_noise(grid: BoxGrid, k_cut=0.5, seed=0):
     """Low-pass-filtered 3D Gaussian noise, unit-normalized by peak |amplitude|.
