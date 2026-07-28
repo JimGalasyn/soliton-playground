@@ -115,6 +115,29 @@ def planar_soliton_pair_seed(grid: BoxGrid, z1: float, z2: float,
 # dx = 0.5. Pinned by tests/test_characteristic_period.py so the clock gate 1
 # depends on is a measured quantity and not an assumed one.
 C_SOUND = 1.0
+XI = 1.0                       # healing length in this preset (dimensionless)
+
+# Gate-1 clocks. WHICH CLOCK WAS USED MUST BE NAMED BESIDE THE BIN, because the
+# same lifetime reads as two different bins depending on the choice: the trefoil
+# unties at 0.13-0.26 traversal periods but 20-40 local-reconnection periods.
+CLOCK_TRAVERSAL = "traversal (tau = L_structure / c)"
+CLOCK_LOCAL_RECONNECTION = "local reconnection (tau = xi / c)"
+
+
+def local_reconnection_period(xi: float = XI, c: float = C_SOUND) -> float:
+    """Gate-1 clock for an entrant whose decay is a LOCAL event.
+
+    A knot does not untie by anything traversing it; it unties where two strands
+    approach within a core radius, so the process is set by the core-crossing time
+    xi/c rather than the whole structure's transit time. The right clock for
+    counting survival is the one the decay mechanism actually runs on.
+
+    Note this does NOT rescue the trefoil from a 50-period threshold: it unties at
+    20-40 local periods, still short of the default N = 50. The clock changes the
+    margin (194x short becomes 1.25-2.5x short), not the verdict, and metastable
+    would require a declared N <= 20.
+    """
+    return xi / c
 
 
 def characteristic_period(structure_length: float, c: float = C_SOUND) -> float:

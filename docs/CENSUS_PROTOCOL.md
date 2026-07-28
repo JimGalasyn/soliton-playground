@@ -104,9 +104,21 @@
 ## Bins
 
 - **protected** — decay forbidden by topology or a conservation law of the preset.
-- **metastable** — long-lived with an identifiable decay channel (knots, oscillons).
-- **unstable** — dies on its own timescale with an identifiable channel.
+  Requires `protecting_charge` ≠ `none`; see "Output per entrant".
+- **metastable** — long-lived with an identifiable decay channel: lifetime ≥ N
+  own-periods *and* a channel. (Oscillons; **not** the GPE vortex knots — the
+  trefoil was assumed to belong here and does not. See `BESTIARY.md`.)
+- **unstable** — dies on its own timescale with an identifiable channel, i.e.
+  lifetime < N own-periods. The GPE trefoil lands here on either clock.
 - **grid-stabilized** — survives at resolution N, dies at 2N. Not physics.
+
+**Every entry names its clock next to its bin.** The metastable/unstable boundary
+is a lifetime threshold, so the bin is only as meaningful as the clock counting it,
+and the same measured lifetime can support either bin: the trefoil unties at 0.26
+traversal periods but 40 local-reconnection periods. Choose the clock the *decay
+mechanism* runs on — a knot unties where two strands approach within a core radius,
+not by anything traversing it, so ξ/c and not L/c. A bin without a clock beside it
+carries no information.
 
 **Refinement rule**: no bestiary entry without passing one resolution doubling
 with gates re-applied.
