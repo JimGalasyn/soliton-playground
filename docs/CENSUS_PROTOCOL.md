@@ -1,5 +1,35 @@
 # Stability census protocol (DRAFT — freeze before the first scored run)
 
+## Gate −1: preflight envelope (MISSING, and it has already cost us)
+
+Before gate 0 there should be **arithmetic walls on the parameters**, checked
+without running anything, saying whether the requested configuration is inside a
+regime where the entrant is known to behave. This protocol has no such gate, and
+the Faddeev real-time run is what the absence costs: it went out at N=64 in an
+L=18 box — half the resolution `stability_compare.py` uses for bare Faddeev in
+that same box — and produced a core reorganization that cannot be told apart from
+an under-resolution artifact. Two hours of GPU to learn something arithmetic would
+have flagged for free.
+
+The retired program built exactly this and it did NOT come across:
+`null-worldtube-private`, `simulations/engine_dogfood/standard_box.py` plus
+`analysis/STANDARD_BOX_SPEC.md` (the "standard box" / chamber, SB-1). Its shape is
+the thing to copy — walls as closed-form arithmetic with a `--envelope` preflight
+mode, calibrated against archived reference runs, plus acceptance BANDS:
+
+    el_mag(R, C)      = 2349 * (14/R)^2 * (C/400)^2     # < 147 HOLDS, else EXPELS
+    alpha_max(dx,lam) = 1e-4 * (dx/0.8)^2 * (1000/lam)  # step wall, ~dx^2
+    min_separation()  = 60 + 2.62 * ln(7408/75)         # two-body seam wall
+    CORE_MIN_DX = 2.0    G2_R_MAX_FRAC = 0.35
+
+**Do not copy those NUMBERS.** They are the EHN *gauged* model: C is a
+Chern-Simons coefficient, lam/kappa are the EHN potential, el_mag is an
+electric/magnetic ratio. None of it transfers to bare Faddeev or to GPE, and no
+envelope exists for either. What transfers is the discipline: for each preset,
+derive the walls that matter (resolution per core radius, step size vs dx, object
+size vs box), calibrate them against runs that are known to have held, and check
+them before spending compute rather than after.
+
 ## Gates (declared before running, applied to every candidate)
 
 0. **Seed gate** (before evolving): boundary-shell density ≈ vacuum
