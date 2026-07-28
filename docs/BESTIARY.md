@@ -46,7 +46,25 @@ This supersedes the `METASTABLE->RINGS` verdict in commits 6ec9cc7, bd8cf9b and 
 
 ## ring debris (decay products of the trefoil)
 
-**PENDING** — the long run (T ≈ 1000) has not been recorded yet. The rings' arc lengths are 17–23 ξ, so τ ≈ 17–23 and the T = 80 runs have observed them for only ~2 of their own periods. They cannot be binned `protected` on topology alone until that is measured.
+Recorded as a **population**, not as individual rings. The loop count wanders (6→5→6→5 across the long run's checkpoints) and the depletion-blob count swings 1–13, so reconnection among the products never stops and no ring keeps its identity. "This ring survived N periods" is therefore not a claim the data supports; what survives is the population.
+
+Long run to T = 1000 (`outputs/trefoil_long/`).
+
+| field | value |
+|---|---|
+| protecting charge | `winding W (phase circulation quantum)` |
+| loops at T | 5 — lengths [69.38, 18.25, 18.25, 15.89, 11.56] |
+| source-run channel verdict | METASTABLE->RINGS (the trefoil's cascade, not a ring bin) |
+| ledger drift | 5.23e-02 |
+| shortest-ring τ (traversal) | 11.6 |
+| observed span in own periods | ~83 (from ring formation ~t=40) |
+| **bin** | **`unstable` population** — line length decays 175→133 over the run, and reconnection never stops |
+
+Rings are traversal-clocked, not reconnection-clocked: a ring has no decay event to time, so what is being asked is whether it survives many transits of itself. Per-ring, that span is size-dependent — the small rings clear N=50 (52–83 periods) and the largest loop does not (13.8) — which is another reason the entry is the population.
+
+**Provisional.** The ledger drift over this run is 5.2e-02, about 7.7x the T=80 value. It is genuinely at the integrator's floor (dt-independent over a 4x refinement) but it is 5% of the total energy, so the gate-2 floor comparison passes while the physics deserves less trust. See the gate-2 note on capping drift absolutely.
+
+`protected` is NOT awarded and cannot be: in this preset the only conserved topological quantity is the per-strand winding, which survives reconnection and so protects circulation rather than any object. See the `protected` bin note in CENSUS_PROTOCOL.md.
 
 ## What no entry can claim yet
 

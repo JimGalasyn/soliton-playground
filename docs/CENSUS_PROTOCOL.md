@@ -46,8 +46,20 @@
    ~2 of their own periods. Reaching 50 would need T ≈ 900–1200, about 12–15× the
    current run.
 2. **Ledger**: energy drift within the integrator's measured floor; every loss
-   accounted by the calorimeter (radiated sector), not the grid. Four rules
-   learned from the trefoil's gate-2 run:
+   accounted by the calorimeter (radiated sector), not the grid.
+
+   **This clause as written is too weak for long runs, and needs an absolute cap
+   alongside the floor.** The floor grows with T — the trefoil's is 1.97e-3 at
+   T=4, 6.83e-3 at T=80 and 5.24e-2 at T=1000, accumulating linearly at ~5.4e-5
+   per unit time — and it is dt-independent at every one of those (drift@1000 is
+   5.238e-2 at dt=0.02 against 5.232e-2 at dt=0.005, a 4x refinement). So the
+   drift really is at the integrator's floor even when it reaches **5.2% of total
+   energy**, and "within the floor" is satisfiable by any run of any length while
+   losing an arbitrary amount of energy. Declare a cap on the drift itself (a few
+   times 1e-3 is what the T≤80 runs actually achieve) as well as the floor
+   comparison, and treat a long run's physics as provisional above it.
+
+   Four further rules learned from the trefoil's gate-2 run:
    - **"Measured floor" means a dt sweep, and its content is dt-INDEPENDENCE.**
      If refining dt does not reduce the drift, the drift is spatial truncation
      and the integrator is already at its floor. Merely comparing a drift to a
@@ -105,6 +117,27 @@
 
 - **protected** — decay forbidden by topology or a conservation law of the preset.
   Requires `protecting_charge` ≠ `none`; see "Output per entrant".
+
+  **This bin is EMPTY in the `gpe-dimensionless` preset for every compact
+  entrant, and that is structural rather than a gap in the campaign.** GPE's only
+  conserved topological quantity is the ±1 phase winding around a strand, and it
+  survives every reconnection untouched — so it protects the existence of
+  *circulation*, never the identity of any *object*. Reconnection is therefore
+  unforbidden in any configuration whose pieces can reach each other, and the
+  T=1000 run shows it never stops: 5–6 loops for a thousand time units with the
+  count wandering 6→5→6→5 and the depletion-blob count swinging 1–13, total line
+  length decaying 175→133, nothing ever settling. Even an isolated ring is not
+  protected, since it shrinks by radiating sound without meeting anything. What is
+  left for this bin in GPE is essentially the translationally invariant straight
+  line, which cannot self-approach — not a zoo.
+
+  Populating `protected` therefore requires a preset whose charge is a genuine
+  homotopy invariant, i.e. the Faddeev–Skyrme wing, where Q_H ∈ π₃(S²) = ℤ cannot
+  change under continuous evolution. **Open and untested:** every Faddeev result
+  the program inherited came from *relaxation* (gradient flow downhill, which by
+  construction cannot exhibit a dynamical instability). Whether Q_H protects a
+  knot under real-time evolution has not been measured, and until it is, no
+  entrant anywhere in this census has earned `protected`.
 - **metastable** — long-lived with an identifiable decay channel: lifetime ≥ N
   own-periods *and* a channel. (Oscillons; **not** the GPE vortex knots — the
   trefoil was assumed to belong here and does not. See `BESTIARY.md`.)

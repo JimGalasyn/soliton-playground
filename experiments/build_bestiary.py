@@ -130,7 +130,13 @@ def main():
             f"{[base['topology'][f'{t}']['n_loops'] for t in ts]} identical, drift "
             f"{base['ledger_drift']:.1e}→{n256['ledger_drift']:.1e} |")
 
-    lines += ["", "## ring debris (decay products of the trefoil)", ""]
+    lines += ["", "## ring debris (decay products of the trefoil)", "",
+              "Recorded as a **population**, not as individual rings. The loop "
+              "count wanders (6→5→6→5 across the long run's checkpoints) and the "
+              "depletion-blob count swings 1–13, so reconnection among the "
+              "products never stops and no ring keeps its identity. \"This ring "
+              "survived N periods\" is therefore not a claim the data supports; "
+              "what survives is the population.", ""]
     if long_:
         lt = sorted(float(k) for k in long_["topology"])
         last = long_["topology"][f"{max(lt)}"]
@@ -142,14 +148,30 @@ def main():
             "| field | value |", "|---|---|",
             f"| protecting charge | `{CHARGE_WINDING}` |",
             f"| loops at T | {last['n_loops']} — lengths {last['lengths']} |",
-            f"| verdict | {long_['verdict']} |",
+            f"| source-run channel verdict | {long_['verdict']} (the trefoil's "
+            "cascade, not a ring bin) |",
             f"| ledger drift | {long_['ledger_drift']:.2e} |",
             f"| shortest-ring τ (traversal) | {tau_ring:.1f} |",
-            f"| observed span in own periods | ~{T/tau_ring:.0f} |",
+            f"| observed span in own periods | ~{(T-40)/tau_ring:.0f} "
+            f"(from ring formation ~t=40) |",
+            f"| **bin** | **`unstable` population** — line length decays "
+            f"175→133 over the run, and reconnection never stops |",
             "",
             "Rings are traversal-clocked, not reconnection-clocked: a ring has no "
             "decay event to time, so what is being asked is whether it survives "
-            "many transits of itself.",
+            "many transits of itself. Per-ring, that span is size-dependent — the "
+            "small rings clear N=50 (52–83 periods) and the largest loop does not "
+            "(13.8) — which is another reason the entry is the population.", "",
+            f"**Provisional.** The ledger drift over this run is "
+            f"{long_['ledger_drift']:.1e}, about 7.7x the T=80 value. It is "
+            "genuinely at the integrator's floor (dt-independent over a 4x "
+            "refinement) but it is 5% of the total energy, so the gate-2 floor "
+            "comparison passes while the physics deserves less trust. See the "
+            "gate-2 note on capping drift absolutely.", "",
+            "`protected` is NOT awarded and cannot be: in this preset the only "
+            "conserved topological quantity is the per-strand winding, which "
+            "survives reconnection and so protects circulation rather than any "
+            "object. See the `protected` bin note in CENSUS_PROTOCOL.md.",
         ]
     else:
         lines += [
