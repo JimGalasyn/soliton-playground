@@ -113,6 +113,33 @@
    an imaginary-time-smoothed seed is not an exact minimizer). Declare which
    measure is meant.
 
+   **Supersede this gate with an eps\* barrier, per the prior program's protocol.**
+   The retired program's kick fleet (`null-worldtube-private`,
+   `simulations/engine_dogfood/eps_kick_batch.py`, `stability_compare.py`) did
+   this better in four ways, and its choices should be adopted:
+   - **Kick the VELOCITY, not the field.** Their `bn = n0` is left untouched and
+     the noise becomes the initial velocity, projected onto the constraint's
+     tangent space (`w -= (w·n0) n0`). This injects kinetic energy without
+     displacing the configuration or perturbing its topology, which a field kick
+     inevitably does.
+   - **Reference eps to ENERGY, absolutely.** They scale by
+     `sqrt(eps * Epot / KE(w))`, so eps *is* the injected energy fraction, and
+     `--common-eref` kicks every model with the same absolute energy so
+     cross-model comparison is apples-to-apples. Our gate-4 run was ~1% in energy
+     against their sweep of 0.1 / 0.25 / 0.5 / 1.0 — so its PASS is a much weaker
+     statement than "a 10% kick" sounds, roughly a tenth of their smallest step.
+   - **Report eps\*, the threshold where survival fails**, not a binary pass at one
+     amplitude. A barrier height is a measurement; a single-eps pass is an anecdote.
+   - **K ≥ 8 seeds per (object, eps)**, scored as a survival *fraction* with a
+     `survived / decayed / unidentifiable` bucket — the third bucket matters,
+     since a tracer failure is not a decay.
+
+   And their recorded false result is worth the warning: the gauged integrator's
+   CFL limit is ~14× tighter than the bare one, and at a bare-tuned dt the full
+   model blew up to NaN — which was published internally as "the full model is
+   more fragile" before being traced to the timestep. Tune dt per model and
+   re-derive any comparison that crosses integrators.
+
 ## Bins
 
 - **protected** — decay forbidden by topology or a conservation law of the preset.
