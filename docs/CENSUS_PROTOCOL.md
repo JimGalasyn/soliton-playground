@@ -19,7 +19,26 @@
 3. **Charge retention**: topological/winding numbers (event-graph charges)
    unchanged, or their change logged as an explicit decay event.
 4. **Kick test**: 10% perturbation → returns to the same basin (position/shape
-   tolerance declared per object class).
+   tolerance declared per object class). **For a `metastable` entrant, "the same
+   basin" means the same decay channel** — such an entrant has no basin to return
+   to, since it decays on its own regardless of the kick, so the gate asks
+   whether the channel and its topological signature survive perturbation.
+   Pass/fail criteria and the observables that are only *reported* must both be
+   declared before running; do not invent a threshold for a quantity nobody has
+   measured yet. Two rules learned from the trefoil's gate-4 run:
+   - **Gate 0 outranks gate 4.** The kick must be windowed to the entrant, not
+     applied to the box: an unwindowed 10% kick left the boundary shell at
+     1 − n = 0.180 against gate 0's 0.02, invalidating the run before physics.
+     `gpe_lab.kick_field(envelope=...)`.
+   - **One realization proves nothing about a basin.** Kick with an ensemble
+     (≥3 seeds). The trefoil's ensemble found the cascade has *two* discrete
+     intermediate routes, which a single kick would have reported as "matches"
+     or "differs" with equal confidence and no way to tell which.
+
+   Note that "10%" is amplitude, not energy: a 10% windowed field kick moved the
+   trefoil's energy by only ~1% (and *lowered* it for one seed, legitimate since
+   an imaginary-time-smoothed seed is not an exact minimizer). Declare which
+   measure is meant.
 
 ## Bins
 

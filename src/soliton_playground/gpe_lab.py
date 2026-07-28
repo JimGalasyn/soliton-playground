@@ -108,6 +108,54 @@ def planar_soliton_pair_seed(grid: BoxGrid, z1: float, z2: float,
     return jnp.asarray(psi, dtype=jnp.complex128)
 
 
+# ----------------------------------------------------------------- kick (gate 4)
+def smooth_noise(grid: BoxGrid, k_cut=0.5, seed=0):
+    """Low-pass-filtered 3D Gaussian noise, unit-normalized by peak |amplitude|.
+
+    k-space envelope built by broadcasting the 1D wavenumber axis rather than
+    np.meshgrid, which would materialize three N^3 grids to use one sum (the
+    same waste that swap-thrashed the first N=256 trefoil run)."""
+    rng = np.random.default_rng(seed)
+    f = rng.standard_normal((grid.N,) * 3)
+    k = 2 * np.pi * np.fft.fftfreq(grid.N, d=grid.dx)
+    k2 = k[:, None, None] ** 2 + k[None, :, None] ** 2 + k[None, None, :] ** 2
+    f = np.real(np.fft.ifftn(np.fft.fftn(f) * np.exp(-k2 / (2 * k_cut**2))))
+    return f / np.abs(f).max()
+
+
+def knot_envelope(grid: BoxGrid, scale: float, r0=2.2, width=0.3):
+    """The Milnor seed's own radial blend, w = 1 inside r0*scale -> 0 outside.
+    Reused as the kick window so a perturbation cannot reach the boundary."""
+    ax = np.asarray(grid.axis()) / scale
+    r = np.sqrt(ax[:, None, None] ** 2 + ax[None, :, None] ** 2
+                + ax[None, None, :] ** 2)
+    return 0.5 * (1.0 - np.tanh((r - r0) / width))
+
+
+def kick_field(grid: BoxGrid, psi, eps=0.10, k_cut=0.5, envelope=None, seed=0):
+    """Census gate-4 kick: psi -> psi * (1 + eps * chi * w), where chi is complex
+    smooth noise with |chi| <= 1 and w is a window.
+
+    COMPLEX on purpose: a real (amplitude-only) kick injects no current, so it
+    cannot excite the velocity field a knot actually lives in. This perturbs
+    density and phase together, i.e. an acoustic kick, with the field amplitude
+    moved by at most eps where the window is open.
+
+    WINDOWED because gate 0 outranks gate 4: an unwindowed eps=0.10 kick leaves
+    the boundary shell at 1 - n ~ 0.19, twenty times seed_gate's 0.02 tolerance,
+    which would invalidate the run before any physics happened. The kick is
+    supposed to perturb the object, not the box, and the window is what makes it
+    the object's kick. Pass envelope=knot_envelope(...) for a localized entrant.
+    """
+    chi = smooth_noise(grid, k_cut, 2 * seed + 1) \
+        + 1j * smooth_noise(grid, k_cut, 2 * seed + 2)
+    chi /= np.abs(chi).max()
+    if envelope is not None:
+        chi = chi * envelope
+    arr = np.asarray(psi) * (1.0 + eps * chi)
+    return jnp.asarray(arr, dtype=jnp.complex128)
+
+
 # ----------------------------------------------------------------- gates
 def seed_gate(grid: BoxGrid, psi, shell=4.0, tol_density=0.02, tol_jump=0.05,
               axes=(0, 1, 2)):

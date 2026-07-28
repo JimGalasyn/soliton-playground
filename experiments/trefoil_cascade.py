@@ -22,6 +22,12 @@ The lineage is
 measured, not narrated: vortex lines are traced as the closed components of
 {Re psi = 0, Im psi = 0}, with loop count, lengths, and the pairwise Gauss
 linking matrix at each checkpoint. No external numbers are compared.
+
+CAVEAT on the untying bracket. This script's t in (20, 40) bracket is a property
+of the UNPERTURBED, 3-fold-symmetric Milnor seed, not of the trefoil: the gate-4
+ensemble (trefoil_kick.py) found 2 of 3 kicked realizations untie before t = 20,
+via a distinct intermediate route. The channel is robust; the bracket is not.
+Quote it with the qualifier.
 """
 from __future__ import annotations
 
