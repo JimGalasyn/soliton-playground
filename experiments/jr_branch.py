@@ -35,8 +35,9 @@ import matplotlib.pyplot as plt  # noqa: E402
 
 from jax_solitons.grid import BoxGrid  # noqa: E402
 from soliton_playground.gpe_lab import (  # noqa: E402
-    C_BLUE, C_ORANGE, DARK_STYLE, dip_centroid_z, evolve, make_energy,
-    ring_pair_seed, seed_gate, smooth, winding_xz)
+    CHARGE_NONE, CHARGE_WINDING, C_BLUE, C_ORANGE, DARK_STYLE, MODEL, PRESET,
+    dip_centroid_z, evolve, make_energy, ring_pair_seed, seed_gate, smooth,
+    winding_xz)
 
 Z0 = -10.0
 RADII = (6.0, 4.0, 3.0, 2.5, 2.0, 1.5, 1.2)
@@ -70,7 +71,12 @@ def run_radius(grid, energy, R, T, dt):
     W = winding_xz(psi1, grid, abs(x_core), z_core, half=2.0)
     kind = "vortex ring" if abs(W) > 0.5 and n_min < 0.05 else "rarefaction pulse"
     slice_end = dens
+    # the branch IS a change of protecting charge: the vortex-ring side carries
+    # a winding quantum, the rarefaction side has unwound to W = 0 and carries
+    # none. Recorded per point, since it varies along the sweep.
     return dict(R=R, U=abs(U), n_min=n_min, winding=float(W), kind=kind,
+                protecting_charge=(CHARGE_WINDING if kind == "vortex ring"
+                                   else CHARGE_NONE),
                 x_core=x_core, z_core=z_core), slice_end
 
 
@@ -102,6 +108,8 @@ def main():
                  min(r["U"] for r in rare) if rare else None)
 
     summary = dict(status="UNSCORED DEMO (census protocol DRAFT)",
+                   preset=PRESET, model=MODEL,
+                   object="Jones-Roberts branch (vortex ring -> rarefaction)",
                    grid=dict(N=args.N, L=args.L, dt=args.dt, T=args.T),
                    results=results,
                    crossover_bracket_U=crossover,

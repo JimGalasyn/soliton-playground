@@ -33,6 +33,8 @@ from jax_solitons.steppers.splitstep import make_splitstep  # noqa: E402
 from jax_solitons.models.gpe import GPEKineticTerm, GPEPotentialTerm  # noqa: E402
 from jax_solitons.models.nlkg import _ring_factor  # noqa: E402
 from jax_solitons.event_graph import EventGraph, PDG_PRIVATE  # noqa: E402
+from soliton_playground.gpe_lab import (  # noqa: E402
+    CHARGE_NONE, CHARGE_WINDING, MODEL, PRESET, zoo_provenance)
 
 G = 1.0
 RING_R = 6.0
@@ -200,23 +202,30 @@ def main():
     zoo = dict(ns="zoo", charge_keys=("E", "W"), receipt_pdg={"PHONON": 22})
     g_ring = EventGraph("ring", **zoo)
     pr_id = g_ring.add_particle(PDG_PRIVATE, 4, {"E": E_ring, "W": 1},
-                                {"zoo.object": "vortex_ring", "zoo.R": RING_R})
+                                {"zoo.object": "vortex_ring", "zoo.R": RING_R,
+                                 **zoo_provenance(CHARGE_WINDING)})
     g_bub = EventGraph("bubble", **zoo)
     pb_id = g_bub.add_particle(PDG_PRIVATE, 4, {"E": E_bub, "W": 0},
-                               {"zoo.object": "bubble", "zoo.R": round(Rb, 3)})
+                               {"zoo.object": "bubble", "zoo.R": round(Rb, 3),
+                                **zoo_provenance(CHARGE_NONE)})
     rc_id = g_bub.add_particle(22, 1, {"E": E_bub}, {"zoo.receipt": "PHONON"})
     g_bub.add_vertex("DECAY", [pb_id], [rc_id])
     closure = g_bub.check_conservation()
 
     summary = dict(
         status="UNSCORED DEMO (census protocol DRAFT)",
+        preset=PRESET, model=MODEL,
         grid=dict(N=args.N, L=args.L, dt=args.dt, T=args.T),
-        ring=dict(E=E_ring, E_pair=E_pair, winding_t0=w0, winding_T=w1,
+        # the two entrants differ precisely in protecting_charge — that is the
+        # protection demo, so it is recorded per object, not once per run
+        ring=dict(object="vortex ring", protecting_charge=CHARGE_WINDING,
+                  E=E_ring, E_pair=E_pair, winding_t0=w0, winding_T=w1,
                   vol_ratio=ring_vol_ratio, travel_z=travel,
                   ledger_drift=ring_drift,
                   verdict="SURVIVES" if ring_vol_ratio > 0.5 and abs(w1) > 0.5
                           else "DIED"),
-        bubble=dict(E=E_bub, R_b=Rb, vol_ratio=bub_vol_ratio,
+        bubble=dict(object="bubble", protecting_charge=CHARGE_NONE,
+                    E=E_bub, R_b=Rb, vol_ratio=bub_vol_ratio,
                     ledger_drift=bub_drift,
                     verdict="DECAYED" if bub_vol_ratio < 0.1 else "SURVIVES"),
         calorimeter_closure={str(k): v for k, v in closure.items()},

@@ -32,8 +32,9 @@ import matplotlib.pyplot as plt  # noqa: E402
 from jax_solitons.grid import BoxGrid  # noqa: E402
 from jax_solitons.event_graph import EventGraph, PDG_PRIVATE  # noqa: E402
 from soliton_playground.gpe_lab import (  # noqa: E402
-    C_BLUE, C_ORANGE, DARK_STYLE, depletion_metrics, evolve, make_energy,
-    planar_soliton_pair_seed, seed_gate, smooth)
+    CHARGE_NONE, C_BLUE, C_ORANGE, DARK_STYLE, depletion_metrics, evolve,
+    make_energy, planar_soliton_pair_seed, provenance, seed_gate, smooth,
+    zoo_provenance)
 
 Z_PLANES = (-16.0, 16.0)
 
@@ -93,7 +94,8 @@ def main():
                .label(dens_mask & (z_end >= 0))[1])
     for half, n in (("z<0", n_lo), ("z>0", n_hi)):
         plane = g.add_particle(PDG_PRIVATE, 4, {"E": E0 / 2},
-                               {"zoo.object": f"dark_plane {half}"})
+                               {"zoo.object": f"dark_plane {half}",
+                                **zoo_provenance(CHARGE_NONE)})
         rings = [g.add_particle(PDG_PRIVATE, 2, {},
                                 {"zoo.object": f"ring {half} #{i}"})
                  for i in range(n)]
@@ -102,6 +104,8 @@ def main():
     closure = g.check_conservation()
 
     summary = dict(status="UNSCORED DEMO (census protocol DRAFT)",
+                   **provenance(CHARGE_NONE),
+                   object="dark planar soliton pair",
                    grid=dict(N=args.N, L=args.L, dt=args.dt, T=args.T,
                              noise=args.noise),
                    seed_gate=gate, E0=E0, verdict=verdict,

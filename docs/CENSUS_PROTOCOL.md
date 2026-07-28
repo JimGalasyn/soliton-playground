@@ -33,8 +33,24 @@ with gates re-applied.
 
 ## Output per entrant
 
-object, preset, bin, lifetime (own-period units), decay channel(s), radiated
-budget (calorimeter partition), lineage graph reference, seed + resolution.
+object, preset, **protecting charge**, bin, lifetime (own-period units), decay
+channel(s), radiated budget (calorimeter partition), lineage graph reference,
+seed + resolution.
+
+**Protecting charge is mandatory, and `none` is a real answer.** It names the
+conserved quantity that forbids this entrant's decay *in this preset*, and it
+is what makes the `protected` bin earnable: an entrant recording `none` can
+never bin as protected no matter how long it lives — only `metastable`.
+
+The rule exists because geometry alone does not identify an entrant. The GPE
+trefoil unties (`METASTABLE`) while the Faddeev T(2,3) hopfion is pinned by
+Hopf charge Q_H = 2 (`protected`) — same knot, same name, different sector,
+because knot type is not a charge of the GPE but Q_H is an integer homotopy
+invariant. Without `preset` + `protecting_charge` in the record, those two
+bestiary rows read as a contradiction. Emitted by `gpe_lab.provenance()` into
+every summary and by `gpe_lab.zoo_provenance()` into the event-graph attrs, so
+a lineage file read back without its summary still says which medium it came
+from.
 
 ## Opening sequence (cheapest decisive first)
 

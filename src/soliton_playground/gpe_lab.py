@@ -19,6 +19,40 @@ from jax_solitons.steppers.splitstep import make_splitstep
 
 G = 1.0
 
+# ------------------------------------------------------------------ provenance
+# Every summary names the medium it ran in and the charge that forbids the
+# entrant's decay (CENSUS_PROTOCOL.md "Output per entrant"), so two entrants
+# with the same geometry in different media never collide in the bestiary. The
+# case that forced this: the GPE trefoil below unties (knot type is not a GPE
+# charge) while the Faddeev T(2,3) hopfion is pinned by Hopf charge Q_H = 2
+# (jax_solitons.seeds.torus_knot_hopfion) — same name, same curve, different
+# sector. Bare "trefoil T(2,3) -> METASTABLE" would read as a contradiction.
+PRESET = "gpe-dimensionless"          # xi = c = 1, g = 1, no damping/pumping
+MODEL = "GPE (split-step)"
+
+# Protecting charges, as recorded per entrant. Short greppable tokens; "none"
+# means nothing in this preset forbids the decay, so the bin is earned by
+# lifetime alone and can never be `protected`.
+CHARGE_NONE = "none"
+CHARGE_WINDING = "winding W (phase circulation quantum)"
+# Knot type is NOT protected in GPE: reconnection leaves the +-1 winding around
+# every strand intact while freely changing the knot, so it cannot bin as
+# protected no matter how long it lives.
+CHARGE_KNOT_UNPROTECTED = "none (knot type); winding W conserved per strand"
+
+
+def provenance(protecting_charge: str) -> dict:
+    """The census provenance block every summary.json carries."""
+    return dict(preset=PRESET, model=MODEL,
+                protecting_charge=protecting_charge)
+
+
+def zoo_provenance(protecting_charge: str) -> dict:
+    """The same provenance as event-graph particle attrs, so the lineage record
+    is self-describing when read back without its summary."""
+    return {"zoo.preset": PRESET, "zoo.model": MODEL,
+            "zoo.protecting_charge": protecting_charge}
+
 
 # ----------------------------------------------------------------- energetics
 def make_energy(grid: BoxGrid):
@@ -106,16 +140,28 @@ def seed_gate(grid: BoxGrid, psi, shell=4.0, tol_density=0.02, tol_jump=0.05,
 
 
 # ----------------------------------------------------------------- trackers
+# Both metrics below run once per sample (81x per campaign run) and used to call
+# grid.coords()[2], which materializes all THREE N^3 float64 coordinate grids to
+# hand back one: 402 MB per call at N=256. That churn (plus the N^3 z-indexed
+# temporaries it fed) swap-thrashed the first N=256 trefoil attempt to 10 GB RSS
+# and 18% CPU on a 15 GB host — the run had to be killed, having reached neither
+# a verdict nor an OOM. Since z varies along one axis only, the 1D axis suffices:
+# it broadcasts along axis 2 for masking, and both centroids collapse to a
+# per-plane count/weight dotted with that axis. Numerically identical (pinned by
+# tests/test_metrics_equivalence.py), ~400x less memory traffic.
 def depletion_metrics(psi, grid: BoxGrid, thresh=0.5, zmax=None):
     """Volume, blob count, and z-centroid of depletion (optionally z < zmax)."""
     dens = np.asarray(jnp.abs(psi) ** 2)
-    z = np.asarray(grid.coords()[2])
+    z = np.asarray(grid.axis())                  # 1D; broadcasts along axis 2
     mask = dens < thresh
     if zmax is not None:
         mask &= z < zmax
     vol = float(mask.sum()) * grid.dx**3
     n_blobs = int(ndimage.label(mask)[1]) if mask.any() else 0
-    zc = float(z[mask].mean()) if mask.any() else float("nan")
+    # sum_{ijk} z_k m_ijk / sum m == (per-plane counts) . z / total
+    counts = mask.sum(axis=(0, 1))
+    n_tot = counts.sum()
+    zc = float((counts * z).sum() / n_tot) if n_tot else float("nan")
     return dict(V_dep=vol, n_blobs=n_blobs, z_dep=zc, n_min=float(dens.min()))
 
 
@@ -124,11 +170,12 @@ def dip_centroid_z(psi, grid: BoxGrid, floor=0.05, zmax=None):
     vortex cores AND rarefaction pulses (whose minimum density is > 0)."""
     dens = np.asarray(jnp.abs(psi) ** 2)
     w = np.clip(1.0 - dens - floor, 0.0, None)
-    z = np.asarray(grid.coords()[2])
+    z = np.asarray(grid.axis())                  # 1D; broadcasts along axis 2
     if zmax is not None:
         w = np.where(z < zmax, w, 0.0)
     tot = w.sum()
-    return float((w * z).sum() / tot) if tot > 0 else float("nan")
+    return float((w.sum(axis=(0, 1)) * z).sum() / tot) if tot > 0 \
+        else float("nan")
 
 
 def winding_xz(psi, grid: BoxGrid, x_c, z_c, half=3.0):

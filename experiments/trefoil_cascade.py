@@ -6,7 +6,19 @@ the Milnor fibration coordinates — wrap-clean by construction: the far field i
 vacuum with zero phase in every direction) and evolved in real time. Expected,
 stated before running: the knot is METASTABLE — it unties via a small number of
 reconnection events into unknotted, unlinked vortex rings, radiating sound at
-each reconnection; the rings then persist (protected bin). The lineage is
+each reconnection; the rings then persist (protected bin).
+
+Why METASTABLE and not protected, since a trefoil sounds topological: knot type
+is not a charge of the GPE. The zero line of a complex scalar may reconnect
+freely, and a reconnection leaves the +-1 phase winding around every strand
+exactly intact while changing the knot -- so nothing here forbids untying. This
+is the deliberate contrast with the Faddeev T(2,3) hopfion
+(jax_solitons.seeds.torus_knot_hopfion), whose Hopf charge Q_H = p*m = 2 is an
+integer homotopy invariant that cannot change under continuous evolution. Same
+curve, same name, different sector; only that one bins as protected. The
+summary records preset + protecting_charge so the two never collide.
+
+The lineage is
 measured, not narrated: vortex lines are traced as the closed components of
 {Re psi = 0, Im psi = 0}, with loop count, lengths, and the pairwise Gauss
 linking matrix at each checkpoint. No external numbers are compared.
@@ -37,8 +49,9 @@ from jax_solitons.measure import curve_length, gauss_lk, resample_curve, \
     trace_curves  # noqa: E402
 from jax_solitons.event_graph import EventGraph, PDG_PRIVATE  # noqa: E402
 from soliton_playground.gpe_lab import (  # noqa: E402
-    C_BLUE, C_GREEN, C_ORANGE, DARK_STYLE, depletion_metrics, evolve,
-    make_energy, seed_gate, smooth)
+    CHARGE_KNOT_UNPROTECTED, C_BLUE, C_GREEN, C_ORANGE, DARK_STYLE,
+    depletion_metrics, evolve, make_energy, provenance, seed_gate, smooth,
+    zoo_provenance)
 
 LOOP_COLORS = (C_BLUE, C_ORANGE, C_GREEN, "#CC79A7", "#F0E442", "#0072B2")
 
@@ -147,6 +160,9 @@ def main():
     ap.add_argument("--T", type=float, default=80.0)
     ap.add_argument("--dt", type=float, default=0.005)
     ap.add_argument("--out", type=Path, default=Path("outputs/trefoil"))
+    ap.add_argument("--keep-checkpoints", action="store_true",
+                    help="retain the per-checkpoint .npy fields (268 MB each at "
+                         "N=256) instead of deleting them after tracing")
     args = ap.parse_args()
     args.out.mkdir(parents=True, exist_ok=True)
 
@@ -162,26 +178,45 @@ def main():
     E0 = float(k0 + p0)
 
     checkpoints = tuple(round(f * args.T, 6) for f in (0, 0.25, 0.5, 0.75, 1.0))
-    snapshots = {}
+    # Checkpoint fields go to disk rather than a snapshots dict, and the topology
+    # phase loads them one at a time. measure.trace_curves peaks near 13.6 GB of
+    # host RSS on a single 256^3 call (the jitted tracer: correct_batch ~4.6 GB,
+    # trace ~5.3 GB on top), so holding all five 268 MB fields alongside it
+    # exhausted a 15 GB host and swap-thrashed the first N=256 attempt to death
+    # (18% CPU, killed after 39 min without reaching a verdict). Keeping one
+    # field live is what makes the resolution doubling fit at all.
+    chk_dir = args.out / "checkpoints"
+    chk_dir.mkdir(parents=True, exist_ok=True)
+    saved = []
 
     def observer(t, psi):
         k, p = energy(psi)
         m = depletion_metrics(psi, grid)
         if any(abs(t - c) < 0.5 * args.dt for c in checkpoints):
-            snapshots[round(t, 3)] = np.asarray(psi)
+            tr = round(t, 3)
+            np.save(chk_dir / f"chk_{tr}.npy", np.asarray(psi))
+            saved.append(tr)
         return dict(E_kin=float(k), E_pot=float(p), E_tot=float(k + p), **m)
 
     psi1, rows, slices = evolve(grid, psi0, T=args.T, dt=args.dt, sample_dt=1.0,
                                 observer=observer, keep_slices_at=checkpoints)
+    del psi0, psi1                     # free two N^3 fields before the tracer
 
-    # topology at each checkpoint
+    # topology at each checkpoint, one field resident at a time
     topo, loops_at = {}, {}
-    for t in sorted(snapshots):
-        loops, rep = topology_report(snapshots[t], grid)
+    for t in sorted(saved):
+        arr = np.load(chk_dir / f"chk_{t}.npy")
+        loops, rep = topology_report(arr, grid)
+        del arr
         topo[t] = rep
         loops_at[t] = loops
         print(f"t={t:6.1f}: {rep['n_loops']} loop(s), lengths {rep['lengths']}, "
-              f"min_crossings {rep['min_crossings']}, linking {rep['linking']}")
+              f"min_crossings {rep['min_crossings']}, linking {rep['linking']}",
+              flush=True)
+    if not args.keep_checkpoints:
+        for t in saved:
+            (chk_dir / f"chk_{t}.npy").unlink(missing_ok=True)
+        chk_dir.rmdir()
     np.savez(args.out / "loops.npz",
              **{f"t{t}_loop{i}": loop for t in loops_at
                 for i, loop in enumerate(loops_at[t])})
@@ -201,7 +236,8 @@ def main():
     g = EventGraph("trefoil_cascade", **zoo)
     knot = g.add_particle(PDG_PRIVATE, 4, {"E": E0},
                           {"zoo.object": "trefoil T(2,3)",
-                           "zoo.scale": args.scale})
+                           "zoo.scale": args.scale,
+                           **zoo_provenance(CHARGE_KNOT_UNPROTECTED)})
     rings = [g.add_particle(PDG_PRIVATE, 2, {},
                             {"zoo.object": f"ring #{i}",
                              "zoo.length": topo[t_last]["lengths"][i]})
@@ -212,6 +248,8 @@ def main():
     closure = g.check_conservation()
 
     summary = dict(status="UNSCORED DEMO (census protocol DRAFT)",
+                   **provenance(CHARGE_KNOT_UNPROTECTED),
+                   object="trefoil T(2,3)",
                    grid=dict(N=args.N, L=args.L, dt=args.dt, T=args.T,
                              scale=args.scale),
                    seed_gate=gate, E0=E0, verdict=verdict,
