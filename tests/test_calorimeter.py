@@ -161,3 +161,48 @@ def test_sum_rule_converges_under_refinement():
         p = energy_partition(grid, psi)
         res.append(abs(p["sum_rule_residual"]) / abs(p["E_tot"]))
     assert res[0] > res[1] > res[2], f"sum-rule residual not converging: {res}"
+
+
+# --- energy-referenced kick (ported from the prior program's eps-kick fleet) ---
+def test_energy_referenced_kick_hits_its_target():
+    """eps must mean the injected energy fraction, to within the bisection
+    tolerance, across a range spanning the prior fleet's sweep. This is the whole
+    point of the port: an amplitude-referenced kick is not comparable between
+    objects or models, and our gate-4 run's '10%' was ~1% in energy."""
+    from soliton_playground.gpe_lab import kick_energy_referenced, knot_envelope
+    import sys, pathlib
+    sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[1] / "experiments"))
+    from trefoil_cascade import milnor_trefoil_seed
+
+    grid = BoxGrid(N=64, L=64.0, dtype=jnp.float64)
+    psi = smooth(grid, milnor_trefoil_seed(grid, 8.0), steps=40)
+    env = knot_envelope(grid, 8.0)
+    for eps in (0.01, 0.1, 0.25):
+        _, rep = kick_energy_referenced(grid, psi, eps=eps, envelope=env, seed=1)
+        assert abs(abs(rep["dE_over_E"]) - eps) / eps < 0.05, \
+            f"eps={eps} requested, {rep['dE_over_E']:+.4f} delivered"
+
+
+def test_amplitude_kick_is_far_weaker_than_its_label():
+    """Pins the units correction: a 10% AMPLITUDE kick is ~1% in ENERGY, so the
+    committed gate-4 result must not be read as a 10% energy perturbation."""
+    from soliton_playground.gpe_lab import kick_field, knot_envelope, make_energy
+    import sys, pathlib
+    sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[1] / "experiments"))
+    from trefoil_cascade import milnor_trefoil_seed
+
+    grid = BoxGrid(N=64, L=64.0, dtype=jnp.float64)
+    psi = smooth(grid, milnor_trefoil_seed(grid, 8.0), steps=40)
+    energy = make_energy(grid)
+    k, p = energy(psi); E0 = float(k + p)
+    kicked = kick_field(grid, psi, eps=0.10,
+                        envelope=knot_envelope(grid, 8.0), seed=1)
+    k, p = energy(kicked)
+    assert abs(float(k + p) - E0) / E0 < 0.05, "a 10% amplitude kick is not 10% energy"
+
+
+def test_survival_buckets_distinguish_unidentifiable_from_decayed():
+    from soliton_playground.gpe_lab import survival_bucket
+    assert survival_bucket(3, 3) == "survived"
+    assert survival_bucket(0, 3) == "decayed"
+    assert survival_bucket(None, 3) == "unidentifiable"

@@ -293,6 +293,84 @@ def knot_envelope(grid: BoxGrid, scale: float, r0=2.2, width=0.3):
     return 0.5 * (1.0 - np.tanh((r - r0) / width))
 
 
+def kick_energy_referenced(grid: BoxGrid, psi, eps=0.10, k_cut=0.5,
+                           envelope=None, seed=0, E_ref=None, tol=2e-3,
+                           max_iter=60):
+    """Kick whose INJECTED ENERGY is eps * E_ref. Returns (psi_kicked, report).
+
+    Ported from the retired program's kick fleet (null-worldtube-private,
+    `simulations/engine_dogfood/eps_kick_batch.py`), which scales its noise by
+    sqrt(eps * Epot / KE(w)) so that eps *is* the injected energy fraction, and
+    uses a common absolute reference across models so comparisons are
+    apples-to-apples. Adopt that convention: an amplitude-referenced kick is not
+    comparable between objects, models, or even seeds. Our own gate-4 run used
+    10% AMPLITUDE, which turned out to be ~1% ENERGY — a tenth of that fleet's
+    smallest step — so its PASS was much weaker than it sounded.
+
+    Two adaptations were forced by the model. GPE is FIRST-ORDER in time, so
+    there is no independent velocity field to kick: their trick of leaving the
+    configuration untouched (`bn = n0`) and putting all the noise into `bv` has
+    no GPE analogue, and the perturbation must move psi itself. And because the
+    GPE energy is not quadratic in the perturbation amplitude, their closed-form
+    sqrt rescaling does not hit the target; the amplitude is bisected instead.
+
+    A consequence worth stating: this kick necessarily perturbs the
+    configuration, so unlike the Faddeev velocity kick it cannot be guaranteed
+    topology-preserving at large eps. Check the seed gate and the initial
+    topology after kicking, not just before.
+    """
+    energy = make_energy(grid)
+    arr = np.asarray(psi)
+    if E_ref is None:
+        k, p = energy(jnp.asarray(arr))
+        E_ref = float(k + p)
+    target = abs(eps * E_ref)
+
+    chi = smooth_noise(grid, k_cut, 2 * seed + 1) \
+        + 1j * smooth_noise(grid, k_cut, 2 * seed + 2)
+    chi /= np.abs(chi).max()
+    if envelope is not None:
+        chi = chi * envelope
+
+    def dE(a):
+        k, p = energy(jnp.asarray(arr * (1.0 + a * chi), dtype=jnp.complex128))
+        return abs(float(k + p) - E_ref)
+
+    lo, hi = 0.0, 0.05
+    for _ in range(40):                     # bracket
+        if dE(hi) >= target:
+            break
+        hi *= 1.8
+    else:
+        raise RuntimeError(f"could not reach eps={eps} (max dE {dE(hi):.4g})")
+
+    for _ in range(max_iter):               # bisect
+        mid = 0.5 * (lo + hi)
+        d = dE(mid)
+        if abs(d - target) <= tol * target:
+            break
+        lo, hi = (mid, hi) if d < target else (lo, mid)
+    a = 0.5 * (lo + hi)
+    out = jnp.asarray(arr * (1.0 + a * chi), dtype=jnp.complex128)
+    k, p = energy(out)
+    return out, dict(eps_requested=eps, amplitude=a,
+                     dE_over_E=(float(k + p) - E_ref) / E_ref, E_ref=E_ref)
+
+
+def survival_bucket(crossings, reference):
+    """Score one kicked realization against the unkicked knot type, in the three
+    buckets the prior program's `eps_kick_id.py` used.
+
+    The third bucket is the one that matters and that a naive pass/fail loses: a
+    tracer that cannot identify the curve is NOT evidence of decay. Our own
+    unperturbed t=80 trace was degenerate and would have been miscounted as a
+    decay by a two-way score.
+    """
+    if crossings is None:
+        return "unidentifiable"
+    return "survived" if crossings == reference else "decayed"
+
+
 def kick_field(grid: BoxGrid, psi, eps=0.10, k_cut=0.5, envelope=None, seed=0):
     """Census gate-4 kick: psi -> psi * (1 + eps * chi * w), where chi is complex
     smooth noise with |chi| <= 1 and w is a window.
