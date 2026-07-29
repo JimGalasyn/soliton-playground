@@ -1,42 +1,76 @@
 #!/usr/bin/env python3
 """Does a Faddeev-Skyrme knot hold its knot type under REAL-TIME evolution?
 
-UNSCORED DEMO (census protocol DRAFT). This is the gap nothing in the program has
-covered. Everything establishing Faddeev knot stability came from RELAXATION:
-`jax_solitons` has `runfns.faddeev_relax_then_id` as its one physics seam, the
-retired fleet (`null-worldtube-private`, `simulations/engine_dogfood/`) was
-relax -> kick -> bath -> POST-RELAX -> ID throughout, and jax-solitons'
+UNSCORED DEMO (census protocol DRAFT). The gap this targets: every result
+establishing Faddeev knot stability came from RELAXATION. `runfns.
+faddeev_relax_then_id` is jax-solitons' one physics seam, the retired fleet
+(`null-worldtube-private`, `simulations/engine_dogfood/`) was relax -> kick ->
+bath -> post-relax -> ID throughout, and jax-solitons'
 `tests/test_acceptance_gates.py::test_gate_trefoil_q7_determinant_held` is an
-EMPTY placeholder. Gradient flow descends, so by construction it cannot exhibit a
-dynamical instability: "stable" so far means "is a minimizer", not "survives
-real-time evolution". Those come apart, because a configuration can sit in a local
-energy minimum and still be dynamically unstable once modes can exchange energy at
-fixed total.
+EMPTY placeholder. Gradient flow descends, so it cannot exhibit a dynamical
+instability by construction: "stable" has meant "is a minimizer", not "survives
+real-time evolution".
 
-Three phases, cheap -> expensive, after the prior fleet's own ordering:
+ON NOT RE-SEARCHING PARAMETER SPACE. The standard box (SB-1) and the particle
+compendium exist precisely so configurations are looked up, not rediscovered.
+They are used here where they reach, and they do NOT reach this run: every one of
+the ten compendium entries
+(`engine_dogfood/particles/*/entry.json`) is `model: ehn-two-scalar`, the GAUGED
+theory. The June hopfion-era bare-Faddeev configurations were never locked in --
+searched for in null-worldtube-private, nwt-analysis, null-worldtube,
+nwt-substrate, nwt-audit and ClaudeSessionShare, and only their EHN
+REPRODUCTIONS survive ("June hopfion-era cinquefoil REPRODUCED in EHN"). So the
+geometry below is INFERRED from published ratios rather than looked up, and is
+labelled as such everywhere it appears. If this run holds, its configuration
+should be locked into the compendium as the first bare-Faddeev entry, which is
+the only way the gap closes.
 
-  1. SEED       Q_H and core-curve determinant on the analytic seed.
-  2. RELAX-SURVIVAL (their cheap pre-filter). Deep arrested flow. Q_H lost in
-     descent => no soliton to evolve, stop. Note this is NOT automatic even in
-     Faddeev: stability_compare.py records that "bare L3 can UNWIND a low-Q knot
-     while the L2 flux tube holds it open".
-  3. REAL-TIME  constrained Verlet from the relaxed state with v = 0. The state is
-     only near-converged, so residual forces excite the internal modes -- the same
-     settling that dominated the GPE trefoil's early transfers -- and the question
-     is whether that settling unties the knot. Tracks Q_H, H = E + KE, and the
-     determinant at checkpoints.
+FOUR THINGS THIS VERSION FIXES, all defects in the version before it, three
+confirmed by measurement rather than argued:
 
-THE COMPARISON THIS IS FOR. The GPE trefoil unties at 0.26 traversal periods of
-its own core (155 xi long). If a Faddeev knot holds its determinant for even one
-traversal period, it beats GPE by a factor of a few on the SAME clock, and the
-model explanation for the two "trefoils" behaving oppositely is established. Note
-what is NOT claimed: 50 periods is out of reach here (tau ~ 30-40 and dt ~ 5e-4
-puts N = 50 at millions of steps), so gate 1's threshold is REPORTED, not met.
+1. CP^1 SPINOR FRAME for relaxation. Relaxing the S^2 n-field stalled hard --
+   |proj grad|/dof = 3.72e-01 against an energy density of ~0.027/dof, with
+   arrested_flow breaking out early ("converged/stalled: no descending step
+   exists above dt_min") and the energy pinned at 20904.71 from 6k to 100k
+   steps. Evolving from a NON-critical state tests residual-force settling, not
+   a minimizer. jax-solitons documents the cure in its own README -- "CP^1
+   spinor frame for deep relaxation" -- and torus_knot_hopfion_cp1 is "ready to
+   relax in the CONVERGENT spinor frame". Relax in CP^1, hand n(Z) to real time.
 
-CLOCK CAVEAT, stated because the protocol requires naming it: c = 1 is the
-model's natural unit here, NOT a measured wave speed. The GPE side measured its
-sound speed (1.0446/1.0714). The Faddeev equivalent has not been measured, so
-periods below carry that assumption. Measuring it is a separate experiment.
+2. POST-RELAX BEFORE EVERY ID -- never identify topology mid-bath. The
+   discipline the retired program wrote down after its own false result:
+   `nwt-audit` PREREG, "relax-then-ID; never identify topology mid-bath
+   (correction-cinquefoil-decays-were-artifacts)". The previous version traced
+   straight out of the bath and produced a spurious det 3 -> 1 transition plus
+   three tracer failures in six checkpoints. During dynamics the core preimage
+   is smeared; the tracer splits it or loses it.
+
+   What this measures, plainly: post-relax-then-ID answers "is the state still
+   in the KNOTTED BASIN", not "is it instantaneously knotted". That is the right
+   question for a census -- same basin logic as gate 4 -- but it is a different
+   question, so the raw mid-bath ID is recorded alongside.
+
+3. GEOMETRY at the validated ratios. torus_knot_hopfion's defaults give
+   R/core = 3.57 REGARDLESS of N or L (R=0.2L, b=0.4R, w=0.7b); the hold regime
+   is R/core = 11, core/dx ~ 2.56, R/L ~ 0.29 (I1_PHASE2_SCALE_pilot_P.md 3B),
+   and at R~3 that note records "the wrapped lock cannot hold even the
+   geometry". Those ratios pin N ~ 96 -- the N they used. Corroborated by EHN
+   finding 7 ("seed radius must be moderate, R ~ 0.25 L").
+   TRANSFER RISK: that regime is the GAUGED model, and stability_compare.py says
+   "bare L3 can UNWIND a low-Q knot while the L2 flux tube holds it open". Bare
+   Faddeev may not hold at ANY geometry, so a failure here is NOT evidence
+   against Q_H protection -- it may only mean the gauge sector is what protects.
+
+4. CHECKPOINT FIELDS SAVED. Re-analysis must never cost another run. The
+   previous version discarded them, so fixing the tracer discipline required
+   repeating 2.25 GPU-hours.
+
+Q_H is measured on the raw field throughout: a field integral, not a tracer
+reading, so it is immune to the mid-bath artifact and needs no post-relax.
+
+CLOCK CAVEAT (the protocol requires naming it): c = 1 is the model's natural
+unit, NOT a measured wave speed. The GPE side measured its sound speed
+(1.0446/1.0714); this side has not.
 """
 from __future__ import annotations
 
@@ -64,68 +98,65 @@ from jax_solitons.grid import BoxGrid  # noqa: E402
 from jax_solitons.knots import (core_curves_from_n, curve_energy_scores,  # noqa: E402
                                 identify_core_knot)
 from jax_solitons.models import faddeev_model  # noqa: E402
-from jax_solitons.models.faddeev import faddeev_energy_density  # noqa: E402
-from jax_solitons.seeds import torus_knot_hopfion  # noqa: E402
-from jax_solitons.steppers import (arrested_flow, kinetic_energy,  # noqa: E402
-                                   verlet_evolve)
+from jax_solitons.models.faddeev import (faddeev_cp1_model,  # noqa: E402
+                                         faddeev_energy_density, n_from_state)
+from jax_solitons.seeds import torus_knot_hopfion_cp1  # noqa: E402
+from jax_solitons.steppers import arrested_flow, kinetic_energy  # noqa: E402
+from jax_solitons.steppers.verlet import make_verlet_step  # noqa: E402
 from jax_solitons.topology import hopf_charge  # noqa: E402
 from soliton_playground.gpe_lab import (C_BLUE, C_GREEN, C_ORANGE,  # noqa: E402
                                         DARK_STYLE, characteristic_period)
 
 C_FADDEEV = 1.0          # model natural unit, NOT measured -- see docstring
-
-
-# jax_solitons.knots labels used to read "trefoil/baryon T(2,3)". Fixed upstream
-# (branch knot-labels-drop-particle-sectors), but enforced here too: this repo's
-# charter has exactly ONE rule -- no structure is ever identified with a Standard
-# Model particle -- and it must hold whichever upstream version is installed.
 _SECTOR_WORDS = ("baryon", "nucleon", "lepton", "meson", "hyperon")
 
 
 def knot_label_only(carrier):
-    """Strip any particle-sector name from an upstream knot label."""
+    """Strip particle-sector names: the charter forbids identifying any
+    structure with a Standard Model particle, whichever upstream is installed."""
     if not carrier:
         return carrier
-    kept = [w for w in str(carrier).replace("/", " ").split()
-            if w.lower() not in _SECTOR_WORDS]
-    return " ".join(kept)
+    return " ".join(w for w in str(carrier).replace("/", " ").split()
+                    if w.lower() not in _SECTOR_WORDS)
 
 
-def id_knot(n, grid, c4, budget=240.0):
-    """Trace the core and identify it. Returns (report, curves).
+def id_knot(n, grid, c4):
+    """Trace the core of an n-field and identify it.
 
     pole="auto" is load-bearing: torus_knot_hopfion + arrested_flow leave the
-    vacuum at +z, needing the -z sheet. knots.py records that the old hard
-    pole=+1 default traced the entire +z-vacuum bulk instead -- millions of seed
-    points and hour-long tracer hangs.
+    vacuum at +z and need the -z sheet; knots.py records that the old hard
+    pole=+1 default traced the whole +z-vacuum bulk instead (hour-long hangs).
     """
     arr = np.asarray(n)
-    # THREE 1D coordinate arrays, not one: trace_implicit_curve does
-    # `for a in axes` and RGI(axes, ...). Passing a single array silently
-    # iterates its scalars and dies with "array is 0-dimensional".
-    ax1 = np.asarray(grid.axis(), float)
+    ax1 = np.asarray(grid.axis(), float)          # THREE 1D arrays, not one
     axes = (ax1, ax1, ax1)
     try:
         curves = core_curves_from_n(arr[0], arr[1], arr[2], axes, pole="auto")
-    except Exception as e:                      # tracer is the fragile step
+    except Exception as e:
         return dict(ok=False, error=f"trace: {type(e).__name__}: {e}"), []
     if not curves:
         return dict(ok=False, error="no core curve found"), []
-    e_dens = np.asarray(faddeev_energy_density(n, grid, c4=c4))
-    try:
-        scores = curve_energy_scores(curves, e_dens, axes)
-        info = identify_core_knot(curves, scores=scores, max_points=200)
-    except Exception as e:
-        return dict(ok=False, n_curves=len(curves),
-                    lengths=[round(float(np.sum(np.linalg.norm(
-                        np.diff(np.vstack([c, c[:1]]), axis=0), axis=1))), 2)
-                        for c in curves],
-                    error=f"id: {type(e).__name__}: {e}"), curves
     lengths = [round(float(np.sum(np.linalg.norm(
         np.diff(np.vstack([c, c[:1]]), axis=0), axis=1))), 2) for c in curves]
+    try:
+        e_d = np.asarray(faddeev_energy_density(jnp.asarray(n), grid, c4=c4))
+        info = identify_core_knot(
+            curves, scores=curve_energy_scores(curves, e_d, axes), max_points=200)
+    except Exception as e:
+        return dict(ok=False, n_curves=len(curves), lengths=lengths,
+                    error=f"id: {type(e).__name__}: {e}"), curves
     return dict(ok=True, n_curves=len(curves), lengths=lengths,
                 determinant=info.get("determinant"),
                 knot=knot_label_only(info.get("carrier"))), curves
+
+
+def n_to_cp1(nn):
+    """Lift a unit n-field back to a CP^1 spinor (gauge phase fixed to zero).
+    n = Z^dag sigma Z inverts up to the U(1) phase, which the energy ignores."""
+    rho = jnp.clip(jnp.sqrt(nn[0] ** 2 + nn[1] ** 2), 1e-12, None)
+    up = jnp.sqrt(jnp.clip((1.0 + nn[2]) / 2.0, 0.0, 1.0))
+    dn = jnp.sqrt(jnp.clip((1.0 - nn[2]) / 2.0, 0.0, 1.0))
+    return jnp.stack([up, jnp.zeros_like(up), dn * nn[0] / rho, dn * nn[1] / rho])
 
 
 def main():
@@ -134,120 +165,140 @@ def main():
     ap.add_argument("--q", type=int, default=3)
     ap.add_argument("--m", type=int, default=1)
     ap.add_argument("--N", type=int, default=96)
-    ap.add_argument("--L", type=float, default=18.0)
+    ap.add_argument("--L", type=float, default=76.8)
+    ap.add_argument("--R", type=float, default=22.0, help="major radius; R/L~0.29")
+    ap.add_argument("--w", type=float, default=2.0, help="core radius; R/w~11")
     ap.add_argument("--c4", type=float, default=4.0)
-    ap.add_argument("--relax-steps", type=int, default=4000)
+    ap.add_argument("--relax-steps", type=int, default=40000)
     ap.add_argument("--relax-dt", type=float, default=2e-4)
-    ap.add_argument("--dt", type=float, default=5e-4,
-                    help="real-time step. The prior fleet's warning: the GAUGED "
-                         "integrator needs <=5e-5 and a bare-tuned 7e-4 blew it "
-                         "to NaN, which circulated as 'the full model is more "
-                         "fragile'. This is the BARE model, so 5e-4 is in range, "
-                         "but the energy trace is the check, not this comment.")
-    ap.add_argument("--steps", type=int, default=100000)
-    ap.add_argument("--checkpoints", type=int, default=5)
-    ap.add_argument("--out", type=Path, default=Path("outputs/faddeev_rt"))
+    ap.add_argument("--post-relax", type=int, default=600,
+                    help="descent steps before each ID (the anti-mid-bath fix)")
+    ap.add_argument("--dt", type=float, default=1e-4)
+    ap.add_argument("--steps", type=int, default=160000)
+    ap.add_argument("--checkpoints", type=int, default=6)
+    ap.add_argument("--out", type=Path, default=Path("outputs/faddeev_rt2"))
     args = ap.parse_args()
     args.out.mkdir(parents=True, exist_ok=True)
+    (args.out / "fields").mkdir(exist_ok=True)
 
     grid = BoxGrid(N=args.N, L=args.L, dtype=jnp.float64)
-    model = faddeev_model(c4=args.c4)
+    cp1 = faddeev_cp1_model(c4=args.c4)      # convergent frame, for descent
+    nmod = faddeev_model(c4=args.c4)         # n-field frame, for real time
     Q_target = args.p * args.m
+    b = args.w / 0.7                         # seeds use w = 0.7 b
+    print(f"geometry (INFERRED, not compendium-locked): R={args.R:g} "
+          f"core={args.w:g} R/core={args.R/args.w:.2f} "
+          f"core/dx={args.w/grid.dx:.2f} R/L={args.R/args.L:.3f}", flush=True)
 
-    # ---- phase 1: seed
-    n = torus_knot_hopfion(grid, args.p, args.q, args.m)
-    q_seed = float(hopf_charge(n, grid))
-    e_seed = float(model.energy(n, grid))
+    # ---- phase 1: seed + DEEP relax in the CP^1 spinor frame
+    z = torus_knot_hopfion_cp1(grid, args.p, args.q, args.m, R=args.R, b=b, w=args.w)
+    n = n_from_state(z)
+    q_seed, e_seed = float(hopf_charge(n, grid)), float(nmod.energy(n, grid))
     id_seed, _ = id_knot(n, grid, args.c4)
-    print(f"SEED   T({args.p},{args.q}) m={args.m}: Q_H={q_seed:+.4f} "
-          f"(target {Q_target})  E={e_seed:.2f}  {id_seed}", flush=True)
+    print(f"SEED  Q_H={q_seed:+.4f} (target {Q_target}) E={e_seed:.1f} {id_seed}",
+          flush=True)
 
-    # ---- phase 2: relax-survival
     t0 = time.time()
-    n, hist = arrested_flow(model, n, grid, dt=args.relax_dt,
-                            steps=args.relax_steps, log_every=max(1, args.relax_steps // 6))
-    q_relax = float(hopf_charge(n, grid))
-    e_relax = float(model.energy(n, grid))
+    z, _ = arrested_flow(cp1, z, grid, dt=args.relax_dt, steps=args.relax_steps,
+                         log_every=0)
+    gr = cp1.constraint.project_tangent(
+        z, jax.grad(lambda s: cp1.energy(s, grid))(z))
+    gnorm = float(jnp.sqrt(jnp.sum(gr ** 2)) / np.sqrt(gr.size))
+    n = n_from_state(z)
+    q_relax, e_relax = float(hopf_charge(n, grid)), float(nmod.energy(n, grid))
     id_relax, curves = id_knot(n, grid, args.c4)
-    print(f"RELAX  ({time.time()-t0:.0f}s, {args.relax_steps} steps): "
-          f"Q_H={q_relax:+.4f}  E={e_seed:.2f}->{e_relax:.2f}  {id_relax}",
+    print(f"RELAX (CP1, {time.time()-t0:.0f}s) Q_H={q_relax:+.4f} "
+          f"E={e_seed:.1f}->{e_relax:.1f} |projgrad|/dof={gnorm:.2e} "
+          f"{'STALLED' if gnorm > 1e-3 else 'near-critical'} | {id_relax}",
           flush=True)
     relax_survived = abs(abs(q_relax) - Q_target) < 0.15
-    if not relax_survived:
-        print("RELAX-SURVIVAL FAILED: Q_H lost in descent, no soliton to evolve")
+    L_core = (max(id_relax["lengths"]) if id_relax.get("lengths")
+              else float("nan"))
+    tau = (characteristic_period(L_core, c=C_FADDEEV) if L_core == L_core
+           else float("nan"))
 
-    # clock from the relaxed core
-    L_core = max(id_relax.get("lengths", [np.nan])) if id_relax.get("lengths") \
-        else float("nan")
-    tau = characteristic_period(L_core, c=C_FADDEEV) if L_core == L_core else float("nan")
+    # ---- phase 2: real time, post-relax-then-ID at checkpoints
+    def post_relax_id(nn):
+        raw, _ = id_knot(nn, grid, args.c4)
+        zz, _ = arrested_flow(cp1, n_to_cp1(nn), grid, dt=args.relax_dt,
+                              steps=args.post_relax, log_every=0)
+        settled, _ = id_knot(n_from_state(zz), grid, args.c4)
+        return dict(raw_mid_bath=raw, post_relaxed=settled)
 
-    # ---- phase 3: real time
     v = jnp.zeros_like(n)
+    step_fn = make_verlet_step(nmod, grid, dt=args.dt)
     every = max(1, args.steps // 200)
-    ck_at = {int(round(f * args.steps)) for f in
-             np.linspace(0, 1, args.checkpoints)}
+    ck_at = {int(round(f * args.steps)) for f in np.linspace(0, 1, args.checkpoints)}
     rows, ck = [], {}
-
-    def observer(i, nn, vv):
-        e = float(model.energy(nn, grid))
-        k = float(kinetic_energy(vv, grid))
-        q = float(hopf_charge(nn, grid))
-        rows.append(dict(step=i, t=i * args.dt, E=e, KE=k, H=e + k, Q_H=q))
-        return None
-
     t0 = time.time()
-    n_rt, v_rt = n, v
-    from jax_solitons.steppers.verlet import make_verlet_step
-    step_fn = make_verlet_step(model, grid, dt=args.dt)
     for i in range(args.steps + 1):
         if i % every == 0:
-            observer(i, n_rt, v_rt)
+            e = float(nmod.energy(n, grid)); k = float(kinetic_energy(v, grid))
+            rows.append(dict(step=i, t=i * args.dt, E=e, KE=k, H=e + k,
+                             Q_H=float(hopf_charge(n, grid))))
         if i in ck_at:
-            rep, _ = id_knot(n_rt, grid, args.c4)
+            np.savez_compressed(args.out / "fields" / f"n_{i:08d}.npz",
+                                n=np.asarray(n, np.float32), t=i * args.dt)
+            rep = post_relax_id(n)
             ck[i] = dict(t=i * args.dt, **rep)
-            print(f"  t={i*args.dt:8.3f} ({i:7d}): Q_H={rows[-1]['Q_H']:+.4f}  "
-                  f"dH/H={(rows[-1]['H']-rows[0]['H'])/rows[0]['H']:+.2e}  {rep}",
-                  flush=True)
+            print(f"  t={i*args.dt:8.3f} ({i:7d}) Q_H={rows[-1]['Q_H']:+.4f} "
+                  f"dH/H={(rows[-1]['H']-rows[0]['H'])/rows[0]['H']:+.2e}\n"
+                  f"      mid-bath : {rep['raw_mid_bath']}\n"
+                  f"      settled  : {rep['post_relaxed']}", flush=True)
         if i < args.steps:
-            n_rt, v_rt = step_fn(n_rt, v_rt)
+            n, v = step_fn(n, v)
     rt_secs = time.time() - t0
 
     T = args.steps * args.dt
     H0, H1 = rows[0]["H"], rows[-1]["H"]
-    dets = [ck[i].get("determinant") for i in sorted(ck)]
-    det0 = dets[0]
-    det_held = all(d == det0 for d in dets if d is not None) and det0 is not None
+    dets_s = [ck[i]["post_relaxed"].get("determinant") for i in sorted(ck)]
+    dets_r = [ck[i]["raw_mid_bath"].get("determinant") for i in sorted(ck)]
+    d0 = dets_s[0]
+    held = d0 is not None and all(d == d0 for d in dets_s if d is not None)
+    n_unid = sum(1 for d in dets_s if d is None)
     q_all = [r["Q_H"] for r in rows]
     q_held = all(abs(abs(x) - Q_target) < 0.15 for x in q_all)
-
-    verdict = ("KNOT HELD" if det_held and q_held
-               else "Q_H HELD, KNOT CHANGED" if q_held
-               else "Q_H LOST")
+    verdict = ("KNOT HELD" if held and q_held and n_unid == 0
+               else "KNOT HELD (some unidentifiable)" if held and q_held
+               else "Q_H HELD, KNOT CHANGED" if q_held else "Q_H LOST")
 
     summary = dict(
         status="UNSCORED DEMO (census protocol DRAFT)",
-        preset="faddeev-skyrme", model=f"Faddeev-Skyrme (constrained Verlet), c4={args.c4}",
+        preset="faddeev-skyrme",
+        model=f"Faddeev-Skyrme c4={args.c4}; CP1 frame for descent, n-field "
+              "constrained Verlet for real time",
         object=f"T({args.p},{args.q}) hopfion m={args.m}",
         protecting_charge=f"Hopf charge Q_H = p*m = {Q_target} (pi_3(S^2) = Z)",
         gate="real-time persistence (fills jax-solitons' empty "
              "test_gate_trefoil_q7_determinant_held)",
-        verdict=verdict,
-        clock=dict(kind="traversal (tau = L_core / c)", L_core=L_core, tau=tau,
-                   c=C_FADDEEV,
-                   caveat="c is the model's natural unit, NOT measured; the GPE "
-                          "side measured its sound speed and this side has not"),
+        verdict=verdict, determinant_held=held, unidentifiable_checkpoints=n_unid,
+        method=dict(
+            id_discipline="post-relax-then-ID; never mid-bath (nwt-audit PREREG, "
+                          "correction-cinquefoil-decays-were-artifacts)",
+            post_relax_steps=args.post_relax,
+            measures="basin membership, NOT instantaneous knottedness; raw "
+                     "mid-bath ID recorded for comparison",
+            relax_frame="CP1 spinor (convergent; the S^2 n-field frame stalls "
+                        "at |projgrad|/dof ~ 3.7e-01)"),
+        geometry=dict(R=args.R, core_w=args.w, R_over_core=args.R / args.w,
+                      core_over_dx=args.w / grid.dx, R_over_L=args.R / args.L,
+                      provenance="INFERRED from I1_PHASE2_SCALE_pilot_P.md (3B) "
+                                 "ratios (R/core~11, core/dx>=2.5, R/L<=0.35), "
+                                 "NOT compendium-locked: all 10 particle "
+                                 "entries are model ehn-two-scalar, and no "
+                                 "bare-Faddeev config was ever locked in"),
+        clock=dict(kind="traversal (tau = L_core/c)", L_core=L_core, tau=tau,
+                   c=C_FADDEEV, caveat="c is the model's natural unit, NOT measured"),
         grid=dict(N=args.N, L=args.L, dx=grid.dx, dt=args.dt, steps=args.steps, T=T),
         seed=dict(Q_H=q_seed, E=e_seed, **id_seed),
-        relax=dict(Q_H=q_relax, E=e_relax, survived=relax_survived,
-                   steps=args.relax_steps, **id_relax),
+        relax=dict(Q_H=q_relax, E=e_relax, proj_grad_per_dof=gnorm,
+                   survived=relax_survived, steps=args.relax_steps, **id_relax),
         realtime=dict(T=T, periods=(T / tau if tau == tau else None),
-                      H_initial=H0, H_final=H1, dH_over_H=(H1 - H0) / H0,
-                      Q_H_min=min(q_all), Q_H_max=max(q_all),
-                      Q_H_held=q_held, determinant_sequence=dets,
-                      determinant_held=det_held, wall_seconds=rt_secs),
-        checkpoints={str(k): ck[k] for k in sorted(ck)},
-        series=rows,
-    )
+                      dH_over_H=(H1 - H0) / H0, Q_H_min=min(q_all),
+                      Q_H_max=max(q_all), Q_H_held=q_held,
+                      determinant_settled=dets_s, determinant_raw=dets_r,
+                      wall_seconds=rt_secs),
+        checkpoints={str(k): ck[k] for k in sorted(ck)}, series=rows)
     (args.out / "summary.json").write_text(json.dumps(summary, indent=2))
 
     # ---- figure
@@ -258,21 +309,23 @@ def main():
 
     a = fig.add_subplot(gs[0, 0])
     a.plot(ts, [r["Q_H"] for r in rows], color=C_BLUE, lw=2)
-    a.axhline(Q_target, color=C_GREEN, ls="--", lw=1.2, label=f"p·m = {Q_target}")
-    a.axhline(-Q_target, color=C_GREEN, ls="--", lw=1.2)
-    a.set_title("Hopf charge (the protecting charge)", fontsize=11)
-    a.set_xlabel("t"); a.legend(frameon=False, fontsize=9)
+    for s in (1, -1):
+        a.axhline(s * Q_target, color=C_GREEN, ls="--", lw=1.2)
+    a.set_title("Hopf charge (immune to the tracer artifact)", fontsize=10)
+    a.set_xlabel("t")
 
     a = fig.add_subplot(gs[0, 1])
     a.plot(ts, [abs(r["H"] / H0 - 1.0) for r in rows], color=C_ORANGE, lw=2)
-    a.set_yscale("log"); a.set_title("|dH/H| (energy + kinetic)", fontsize=11)
-    a.set_xlabel("t")
+    a.set_yscale("log"); a.set_title("|dH/H|", fontsize=10); a.set_xlabel("t")
 
     a = fig.add_subplot(gs[0, 2])
-    a.plot(ts, [r["E"] for r in rows], color=C_BLUE, lw=2, label="E (potential)")
-    a.plot(ts, [r["KE"] for r in rows], color=C_ORANGE, lw=2, label="KE")
-    a.set_title("energy exchange (settling)", fontsize=11)
-    a.set_xlabel("t"); a.legend(frameon=False, fontsize=9)
+    tc = [ck[i]["t"] for i in sorted(ck)]
+    a.plot(tc, [np.nan if d is None else d for d in dets_s], marker="o", lw=2.4,
+           color=C_BLUE, label="post-relaxed (the verdict)")
+    a.plot(tc, [np.nan if d is None else d for d in dets_r], marker="x", lw=1.2,
+           ls=":", color=C_ORANGE, label="raw mid-bath (artifact-prone)")
+    a.set_title("core determinant", fontsize=10); a.set_xlabel("t")
+    a.legend(frameon=False, fontsize=8)
 
     a = fig.add_subplot(gs[1, 0], projection="3d")
     a.set_facecolor("black")
@@ -283,35 +336,30 @@ def main():
     a.set_axis_off()
 
     a = fig.add_subplot(gs[1, 1:]); a.axis("off")
-    card = (f"UNSCORED DEMO — protocol DRAFT\n\n"
-            f"T({args.p},{args.q}) hopfion m={args.m}   N={args.N} L={args.L:g} "
-            f"dx={grid.dx:.3f}   dt={args.dt:g}\n\n"
-            f"REAL-TIME VERDICT: {verdict}\n\n"
-            f"  Q_H  seed {q_seed:+.4f} -> relax {q_relax:+.4f} -> "
-            f"real-time [{min(q_all):+.4f}, {max(q_all):+.4f}]  (target "
-            f"{Q_target})\n"
-            f"  determinant  seed {id_seed.get('determinant')} -> relax "
-            f"{id_relax.get('determinant')} -> {dets}\n"
-            f"  dH/H over T={T:g}:  {(H1-H0)/H0:+.3e}\n\n"
-            f"  clock: tau = L_core/c = {L_core:.1f}/{C_FADDEEV:g} = {tau:.1f}\n"
-            f"  ran {T/tau if tau==tau else float('nan'):.2f} traversal periods\n"
-            f"    (GPE trefoil untied at 0.26 of its own; gate 1's N=50 is out\n"
-            f"     of reach here and is REPORTED, not met)\n"
-            f"  c = {C_FADDEEV:g} is the model's natural unit, NOT measured\n\n"
+    card = (f"UNSCORED DEMO — protocol DRAFT\n\nT({args.p},{args.q}) m={args.m}   "
+            f"N={args.N} L={args.L:g} dx={grid.dx:.3f} dt={args.dt:g}\n"
+            f"R/core={args.R/args.w:.1f}  core/dx={args.w/grid.dx:.2f}  "
+            f"R/L={args.R/args.L:.3f}   (INFERRED, not compendium-locked)\n\n"
+            f"VERDICT: {verdict}\n\n"
+            f"  Q_H  {q_seed:+.4f} -> relax {q_relax:+.4f} -> "
+            f"[{min(q_all):+.4f}, {max(q_all):+.4f}]  target {Q_target}\n"
+            f"  relax |projgrad|/dof {gnorm:.2e} (CP1 frame)\n"
+            f"  det settled   {dets_s}\n"
+            f"  det mid-bath  {dets_r}   <- artifact-prone, NOT the verdict\n"
+            f"  dH/H over T={T:g}: {(H1-H0)/H0:+.3e}\n"
+            f"  tau={tau:.1f}, ran {T/tau if tau==tau else float('nan'):.3f} periods\n\n"
+            f"  post-relax-then-ID measures BASIN membership, not instantaneous\n"
+            f"  knottedness. Fields saved: re-analysis costs no GPU.\n\n"
             f"no external numbers were compared.")
-    a.text(0, 0.98, card, va="top", fontsize=10.5, color="#DDDDDD",
-           family="monospace", linespacing=1.55)
+    a.text(0, 0.98, card, va="top", fontsize=10, color="#DDDDDD",
+           family="monospace", linespacing=1.5)
 
-    fig.suptitle("FADDEEV-SKYRME KNOT, REAL TIME: does Q_H protect it "
-                 "dynamically, or only under descent?", fontsize=13,
+    fig.suptitle("FADDEEV-SKYRME KNOT, REAL TIME (v2: CP1 relax + "
+                 "post-relax-then-ID + validated-ratio geometry)", fontsize=13,
                  color="white", y=0.98)
-    out = args.out / "faddeev_realtime.png"
-    fig.savefig(out, dpi=110, bbox_inches="tight")
-
-    print(f"\nVERDICT: {verdict}")
-    print(f"  Q_H held {q_held}  det {dets}  dH/H {(H1-H0)/H0:+.3e}  "
-          f"periods {T/tau if tau==tau else float('nan'):.2f}")
-    print(out)
+    fig.savefig(args.out / "faddeev_realtime.png", dpi=110, bbox_inches="tight")
+    print(f"\nVERDICT: {verdict}\n  settled {dets_s}  raw {dets_r}  "
+          f"dH/H {(H1-H0)/H0:+.3e}")
 
 
 if __name__ == "__main__":
