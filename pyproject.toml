@@ -13,3 +13,12 @@ dependencies = ["numpy", "matplotlib"]
 
 [tool.setuptools.packages.find]
 where = ["src"]
+
+# So `pytest tests/` works in a checkout that has NOT been pip-installed. Without
+# this the suite only runs as `PYTHONPATH=src <some other venv>/bin/python -m
+# pytest`, which is what the 2026-07-30 intake had to do on the receiving machine —
+# it has no .venv here, so it borrowed jax-solitons' interpreter. The tests were
+# green either way, but "23 tests pass" should not depend on knowing that trick.
+[tool.pytest.ini_options]
+pythonpath = ["src"]
+testpaths = ["tests"]
