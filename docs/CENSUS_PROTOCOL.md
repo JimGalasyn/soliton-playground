@@ -27,7 +27,10 @@ Two corrections to this section's original claims, both found by going and looki
   2026-07-10, "STANDARD BOX spec v1 (Jim + C, for P riders)", on branch
   `worktree-more-cosmogenesis`, present locally and on `origin`. It is absent only
   from `main`, which is why looking at the working tree missed it. Retrieve with
-  `git show d266443:analysis/STANDARD_BOX_SPEC.md`.
+  `git show d266443:analysis/STANDARD_BOX_SPEC.md` — or just read
+  [`STANDARD_BOX_SPEC.md`](STANDARD_BOX_SPEC.md), restored into this repo on
+  2026-08-01 so the normative document sits beside the battery that cites it
+  rather than on an unmerged branch of a deprecated repo.
 
   So the constants are authoritative **by design, not by default**: the spec's
   measured envelope and this battery agree exactly — `2349·(14/R)²·(C/400)²` with a
