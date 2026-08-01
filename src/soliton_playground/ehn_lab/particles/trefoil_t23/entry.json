@@ -1,0 +1,66 @@
+{
+ "name": "trefoil_t23",
+ "description": "T(2,3) trefoil knot soliton, N_link=3 (below EHN floor); pre-registered stability PASSED at 36k steps (E-slope decel, zero skeleton shrink, Lk/det exact)",
+ "created": "2026-07-09 08:36",
+ "model": "ehn-two-scalar",
+ "relaxation": {
+  "integrator": "ehn_relax.relax_iter (EHN Eqs.12/13/11 interleaved gradient descent)",
+  "params": {
+   "N": 192,
+   "L": 153.6,
+   "nlink": 3,
+   "C": 400.0,
+   "alpha": 0.0001,
+   "beta": 0.002,
+   "U": 50.0,
+   "ic": "screened",
+   "cramp": 8000,
+   "agrad": "wrapped"
+  },
+  "source_out_dir": "out_trefoil_t23_n192_ext",
+  "git_commit": "ee8abb3",
+  "wall_s": 2183.9632799625397
+ },
+ "measured": {
+  "N": 192,
+  "L": 153.60000000000002,
+  "dx": 0.8,
+  "step_index": 36000,
+  "Lk_phi1_phi2": -3.0,
+  "phi1_knot": [
+   [
+    978,
+    3
+   ]
+  ],
+  "phi2_knot": [
+   [
+    600,
+    1
+   ]
+  ],
+  "phi1_skeleton_segments": 978
+ },
+ "energy_final": {
+  "n": 36000,
+  "Q": -2.8682672846604693,
+  "C": 400.0,
+  "grad1": 1550.0495868511653,
+  "grad2": 1990.3522478177251,
+  "pot": -721.576655413739,
+  "mag": 366.5017787619685,
+  "elec": 156.2215700154935,
+  "sky": 0.0,
+  "link": -24.389904047287025,
+  "total": 3341.5485280326134
+ },
+ "validity": "pre-reg 2026-07-09: E-slope -170->-29/1000 decel; 978 segs stable 12k-36k; Lk=-3.000 det=3; Q healed -2.30->-2.87; el~156 live. Wrapped-only: bilinear control kills charges (Q->0, el->27) at intact geometry.",
+ "field": {
+  "file": "field.npz",
+  "sha256": "392941400ab3d4b6ef97cf4c26c4fcc57bc363e1200940a2dad142e1d8e17ffd"
+ },
+ "caveats": [
+  "engine-static: stationary only under the recorded integrator (outline \u00a75); re-settle in any other stepper",
+  "labels are field-state names, not K7-compendium rows nor SM particles (COMPENDIUM.md)"
+ ]
+}

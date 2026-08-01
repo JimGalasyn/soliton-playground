@@ -1,0 +1,72 @@
+{
+    "name": "trefoil_t23_twist1",
+    "description": "T(2,3) trefoil + framing ring (twist=1). Ring PERSISTS 24k locked steps as det-1 zero-net-linking satellite; dE=+740 vs untwisted twin at matched steps (framing raises the energy; same sign as the mirror twin)",
+    "created": "2026-07-09 11:21",
+    "model": "ehn-two-scalar",
+    "relaxation": {
+        "integrator": "ehn_relax.relax_iter (EHN Eqs.12/13/11 interleaved gradient descent)",
+        "params": {
+            "N": 192,
+            "L": 153.6,
+            "nlink": 3,
+            "C": 400.0,
+            "alpha": 0.0001,
+            "beta": 0.002,
+            "U": 50.0,
+            "ic": "screened",
+            "cramp": 8000,
+            "agrad": "wrapped"
+        },
+        "source_out_dir": "out_trefoil_twist1_n192",
+        "git_commit": "b999911",
+        "wall_s": 2118.674550294876
+    },
+    "measured": {
+        "N": 192,
+        "L": 153.60000000000002,
+        "dx": 0.8,
+        "step_index": 24000,
+        "Lk_phi1_phi2": -3.0,
+        "phi1_knot": [
+            [
+                662,
+                3
+            ],
+            [
+                224,
+                1
+            ]
+        ],
+        "phi2_knot": [
+            [
+                230,
+                1
+            ]
+        ],
+        "phi1_skeleton_segments": 886
+    },
+    "energy_final": {
+        "n": 24000,
+        "Q": -2.7068768572276087,
+        "C": 400.0,
+        "grad1": 1464.0669771179216,
+        "grad2": 1273.0531498187163,
+        "pot": -723.5565655131176,
+        "mag": 688.8422712649054,
+        "elec": 44.6443383768715,
+        "sky": 0.0,
+        "link": -9.24829159564555,
+        "total": 2747.050171065297
+    },
+    "validity": "24k steps: phi1=[(662,3),(224,1)] both components stable; Lk_total=-3.000 (ring nets ~0 = neutral dressing); Q healed to -2.71; el 6317-spike stripped to ~45 stable; E descending -37/1k like twin. Not full 36k pre-reg treatment.",
+    "field": {
+        "file": "field.npz",
+        "sha256": "c5613f405520196f5cd4473f78166165eb6d555f09d521750ab610afbec725c0"
+    },
+    "caveats": [
+        "engine-static: stationary only under the recorded integrator (outline \u00a75); re-settle in any other stepper",
+        "labels are field-state names, not K7-compendium rows nor SM particles (COMPENDIUM.md)"
+    ],
+    "label_policy": "knot-theoretic labels only: the NWT carrier-to-particle mapping was not established (see jax-solitons COMPENDIUM.md, 'Walk-knot versus carrier-knot': lifting walks to 3-D embeddings gives mostly the unknot, <=14% agreement with the carrier), and soliton-playground's charter forbids identifying any structure with a Standard Model particle. Geometry and every measured quantity are unchanged.",
+    "provenance_note": "Produced in null-worldtube-private (see relaxation.git_commit). Description relabelled 2026-07-29; measurements untouched."
+}

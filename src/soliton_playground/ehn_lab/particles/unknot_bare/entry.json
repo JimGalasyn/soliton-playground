@@ -1,0 +1,69 @@
+{
+    "name": "unknot_bare",
+    "description": "Bare unknot carrier, N_link=1 -- STABLE three rungs below EHN's floor (pre-reg criteria passed). The undressed carrier",
+    "created": "2026-07-09 13:57",
+    "model": "ehn-two-scalar",
+    "relaxation": {
+        "integrator": "ehn_relax.relax_iter (EHN Eqs.12/13/11 interleaved gradient descent)",
+        "params": {
+            "N": 192,
+            "L": 153.6,
+            "nlink": 1,
+            "C": 400.0,
+            "alpha": 0.0001,
+            "beta": 0.002,
+            "U": 50.0,
+            "ic": "screened",
+            "cramp": 8000,
+            "agrad": "wrapped"
+        },
+        "source_out_dir": "out_lepton_bare_n192",
+        "git_commit": "a8f6031",
+        "wall_s": 2203.009596347809
+    },
+    "measured": {
+        "N": 192,
+        "L": 153.60000000000002,
+        "dx": 0.8,
+        "step_index": 24000,
+        "Lk_phi1_phi2": -1.0,
+        "phi1_knot": [
+            [
+                288,
+                1
+            ]
+        ],
+        "phi2_knot": [
+            [
+                344,
+                1
+            ]
+        ],
+        "phi1_skeleton_segments": 288
+    },
+    "energy_final": {
+        "n": 24000,
+        "Q": -0.9166591696408423,
+        "C": 400.0,
+        "grad1": 403.0232976151565,
+        "grad2": 1041.2962966739005,
+        "pot": -723.6480678675003,
+        "mag": 190.2824000923541,
+        "elec": 20.395312920689175,
+        "sky": 0.0,
+        "link": -3.357049648351725,
+        "total": 931.3492394346
+    },
+    "validity": "24k steps: Lk=-1.000, det=1 single comp, Q healed -0.89, el ~20 alive. E=931.3.",
+    "field": {
+        "file": "field.npz",
+        "sha256": "9afc08c788408f743e4b534000dfc038dacd820a645bb3fff6683b4354424cb0"
+    },
+    "caveats": [
+        "engine-static: stationary only under the recorded integrator (outline \u00a75); re-settle in any other stepper",
+        "labels are field-state names, not K7-compendium rows nor SM particles (COMPENDIUM.md)"
+    ],
+    "renamed_from": "lepton_bare",
+    "label_policy": "knot-theoretic labels only: the NWT carrier-to-particle mapping was not established (see jax-solitons COMPENDIUM.md, 'Walk-knot versus carrier-knot': lifting walks to 3-D embeddings gives mostly the unknot, <=14% agreement with the carrier), and soliton-playground's charter forbids identifying any structure with a Standard Model particle. Geometry and every measured quantity are unchanged.",
+    "provenance_note": "Produced in null-worldtube-private (see relaxation.git_commit). Description relabelled 2026-07-29 to knot-theoretic terms; measurements untouched. relaxation.source_out_dir is RETAINED VERBATIM (out_lepton_bare_n192) because it is a historical filesystem path, not a physics claim -- that directory really is where these bytes were written, and rewriting it to satisfy a label policy would falsify the provenance rather than honour the charter."
+}

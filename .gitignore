@@ -5,3 +5,17 @@ __pycache__/
 outputs/
 *.npz
 *.mp4
+
+# field_store/objects holds the ONLY copy of states that cost GPU-hours, so this
+# is a deployment limit rather than a judgement that they are disposable (`*.npz`
+# above already catches them; this is here to be found). Push is blocked on this
+# machine, so git-lfs here could not reach anywhere. field_store/index.json is NOT
+# ignored, so it will be tracked once the first `put` creates it — with 0/10 held
+# it does not exist yet. What is MISSING is legible from the tracked catalog
+# regardless, which is the half that matters while the store is empty.
+# See src/soliton_playground/ehn_lab/field_store.py, PROMOTION, before changing.
+field_store/objects/
+!field_store/index.json
+
+# Battery run artifacts, reproducible from the engine SHA; not source.
+src/soliton_playground/ehn_lab/certificates/

@@ -1,0 +1,73 @@
+{
+    "name": "unknot_framed_twist1",
+    "description": "Framed unknot (twist=1). Framing ring (224 segs -- identical to the framing ring of trefoil_t23_twist1) confined at Lk(ring,main)=-1.000, neutral to ledger; framing cost +762 vs bare = the carrier-independent framing quantum (trefoil carrier: +717+/-25)",
+    "created": "2026-07-09 13:57",
+    "model": "ehn-two-scalar",
+    "relaxation": {
+        "integrator": "ehn_relax.relax_iter (EHN Eqs.12/13/11 interleaved gradient descent)",
+        "params": {
+            "N": 192,
+            "L": 153.6,
+            "nlink": 1,
+            "C": 400.0,
+            "alpha": 0.0001,
+            "beta": 0.002,
+            "U": 50.0,
+            "ic": "screened",
+            "cramp": 8000,
+            "agrad": "wrapped"
+        },
+        "source_out_dir": "out_electron_n192",
+        "git_commit": "a8f6031",
+        "wall_s": 2159.499814271927
+    },
+    "measured": {
+        "N": 192,
+        "L": 153.60000000000002,
+        "dx": 0.8,
+        "step_index": 24000,
+        "Lk_phi1_phi2": -1.0,
+        "phi1_knot": [
+            [
+                290,
+                1
+            ],
+            [
+                224,
+                1
+            ]
+        ],
+        "phi2_knot": [
+            [
+                222,
+                1
+            ]
+        ],
+        "phi1_skeleton_segments": 514
+    },
+    "energy_final": {
+        "n": 24000,
+        "Q": -0.8938147584814771,
+        "C": 400.0,
+        "grad1": 838.3512295984916,
+        "grad2": 1075.4665909650134,
+        "pot": -723.7376635835885,
+        "mag": 487.05491665526887,
+        "elec": 16.0449661192445,
+        "sky": 0.0,
+        "link": -3.2960525005322894,
+        "total": 1693.1800397544298
+    },
+    "validity": "24k steps: Lk=-1.000; phi1=[(290,1),(224,1)]; ring neutral+confined; E=1693.2. Universal framing quantum = emergent #12.",
+    "field": {
+        "file": "field.npz",
+        "sha256": "530b66598832a2b33bb8e4c48543f61cb37220e25b6c6de6b6b8eb498932fe26"
+    },
+    "caveats": [
+        "engine-static: stationary only under the recorded integrator (outline \u00a75); re-settle in any other stepper",
+        "labels are field-state names, not K7-compendium rows nor SM particles (COMPENDIUM.md)"
+    ],
+    "renamed_from": "electron",
+    "label_policy": "knot-theoretic labels only: the NWT carrier-to-particle mapping was not established (see jax-solitons COMPENDIUM.md, 'Walk-knot versus carrier-knot': lifting walks to 3-D embeddings gives mostly the unknot, <=14% agreement with the carrier), and soliton-playground's charter forbids identifying any structure with a Standard Model particle. Geometry and every measured quantity are unchanged.",
+    "provenance_note": "Produced in null-worldtube-private (see relaxation.git_commit). Description relabelled 2026-07-29 to knot-theoretic terms; measurements untouched. relaxation.source_out_dir is RETAINED VERBATIM (out_electron_n192) because it is a historical filesystem path, not a physics claim -- that directory really is where these bytes were written, and rewriting it to satisfy a label policy would falsify the provenance rather than honour the charter."
+}

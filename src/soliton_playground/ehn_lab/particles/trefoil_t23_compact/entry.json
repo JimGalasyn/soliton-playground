@@ -1,0 +1,66 @@
+{
+ "name": "trefoil_t23_compact",
+ "description": "Compact T(2,3) trefoil (R=22.5) relaxed ON the N=192 staging grid \u2014 the two-body composition particle",
+ "created": "2026-07-09 09:42",
+ "model": "ehn-two-scalar",
+ "relaxation": {
+  "integrator": "ehn_relax.relax_iter (EHN Eqs.12/13/11 interleaved gradient descent)",
+  "params": {
+   "N": 192,
+   "L": 153.6,
+   "nlink": 3,
+   "C": 400.0,
+   "alpha": 0.0001,
+   "beta": 0.002,
+   "U": 50.0,
+   "ic": "screened",
+   "cramp": 8000,
+   "agrad": "wrapped"
+  },
+  "source_out_dir": "out_trefoil_compact_n192",
+  "git_commit": "8ca40b9",
+  "wall_s": 2114.210606098175
+ },
+ "measured": {
+  "N": 192,
+  "L": 153.60000000000002,
+  "dx": 0.8,
+  "step_index": 24000,
+  "Lk_phi1_phi2": -3.0,
+  "phi1_knot": [
+   [
+    660,
+    3
+   ]
+  ],
+  "phi2_knot": [
+   [
+    428,
+    1
+   ]
+  ],
+  "phi1_skeleton_segments": 660
+ },
+ "energy_final": {
+  "n": 24000,
+  "Q": -2.759116567783894,
+  "C": 400.0,
+  "grad1": 1024.5261522634776,
+  "grad2": 1234.3204250063804,
+  "pot": -723.4787906348738,
+  "mag": 397.829772731453,
+  "elec": 73.93971354214986,
+  "sky": 0.0,
+  "link": -9.424486436578663,
+  "total": 2007.1372729085872
+ },
+ "validity": "24k steps (not full 36k pre-reg treatment): Lk=-3.000 det=3, 660 segs (R-scaled, no shrink), Q healed -2.76, el 48->74 recovering (live, weaker than canonical per 1/R^2). Fit-for-staging; not the canonical stability reference.",
+ "field": {
+  "file": "field.npz",
+  "sha256": "875b1808598d9779c3e0b5b77ef8fa12c7daadfdaafe8fb0dc2f452bfdf19f0d"
+ },
+ "caveats": [
+  "engine-static: stationary only under the recorded integrator (outline \u00a75); re-settle in any other stepper",
+  "labels are field-state names, not K7-compendium rows nor SM particles (COMPENDIUM.md)"
+ ]
+}

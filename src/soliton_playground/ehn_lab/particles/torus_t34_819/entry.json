@@ -1,0 +1,66 @@
+{
+ "name": "torus_t34_819",
+ "description": "T(3,4)=8_19 held 24k steps wrapped: Lk=-4.000, det=3 single component \u2014 second det-3 carrier, inside EHN own N_link>=4 window (fleet 07-09, scored 07-11)",
+ "created": "2026-07-11 09:32",
+ "model": "ehn-two-scalar",
+ "relaxation": {
+  "integrator": "ehn_relax.relax_iter (EHN Eqs.12/13/11 interleaved gradient descent)",
+  "params": {
+   "N": 192,
+   "L": 153.6,
+   "nlink": 4,
+   "C": 400.0,
+   "alpha": 0.0001,
+   "beta": 0.002,
+   "U": 50.0,
+   "ic": "screened",
+   "cramp": 8000,
+   "agrad": "wrapped"
+  },
+  "source_out_dir": "output/periodic_table/t34_819_det3lk4/out_ehn_relax",
+  "git_commit": "809740c",
+  "wall_s": 1222.1190617084503
+ },
+ "measured": {
+  "N": 192,
+  "L": 153.60000000000002,
+  "dx": 0.8,
+  "step_index": 24000,
+  "Lk_phi1_phi2": -4.0,
+  "phi1_knot": [
+   [
+    952,
+    3
+   ]
+  ],
+  "phi2_knot": [
+   [
+    244,
+    1
+   ]
+  ],
+  "phi1_skeleton_segments": 952
+ },
+ "energy_final": {
+  "n": 24000,
+  "Q": -3.665690216416413,
+  "C": 400.0,
+  "grad1": 1456.6454562176332,
+  "grad2": 1349.609659954201,
+  "pot": -723.3478186427518,
+  "mag": 581.8532718808935,
+  "elec": 64.37513569023542,
+  "sky": 0.0,
+  "link": -12.747373622768057,
+  "total": 2729.135705100211
+ },
+ "validity": "",
+ "field": {
+  "file": "field.npz",
+  "sha256": "a8915fd4a63fc5efd6df95b8bb716aad55c59ace820d47c4136504716a7c3e43"
+ },
+ "caveats": [
+  "engine-static: stationary only under the recorded integrator (outline \u00a75); re-settle in any other stepper",
+  "labels are field-state names, not K7-compendium rows nor SM particles (COMPENDIUM.md)"
+ ]
+}

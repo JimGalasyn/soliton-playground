@@ -14,6 +14,15 @@ dependencies = ["numpy", "matplotlib"]
 [tool.setuptools.packages.find]
 where = ["src"]
 
+# The ten catalog entries are DATA the code reads at runtime
+# (`ehn_lab.field_store.CATALOG`), not incidental files: a wheel without them has
+# a store that reports an empty catalog and a B5 leg with nothing to conform
+# against. The relaxed states themselves are NOT here -- they live in the
+# content-addressed store at the repo root, deliberately outside the package,
+# because they are hundreds of megabytes each.
+[tool.setuptools.package-data]
+"soliton_playground.ehn_lab" = ["particles/*/entry.json"]
+
 # So `pytest tests/` works in a checkout that has NOT been pip-installed. Without
 # this the suite only runs as `PYTHONPATH=src <some other venv>/bin/python -m
 # pytest`, which is what the 2026-07-30 intake had to do on the receiving machine —

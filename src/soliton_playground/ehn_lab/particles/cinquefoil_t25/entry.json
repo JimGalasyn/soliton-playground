@@ -1,0 +1,66 @@
+{
+ "name": "cinquefoil_t25",
+ "description": "T(2,5) cinquefoil held 24k steps wrapped: Lk=-5.000, det=5 single component, Q=-4.67 retained. June hopfion-era cinquefoil REPRODUCED in EHN (fleet 07-09, scored 07-11)",
+ "created": "2026-07-11 09:32",
+ "model": "ehn-two-scalar",
+ "relaxation": {
+  "integrator": "ehn_relax.relax_iter (EHN Eqs.12/13/11 interleaved gradient descent)",
+  "params": {
+   "N": 192,
+   "L": 153.6,
+   "nlink": 5,
+   "C": 400.0,
+   "alpha": 0.0001,
+   "beta": 0.002,
+   "U": 50.0,
+   "ic": "screened",
+   "cramp": 8000,
+   "agrad": "wrapped"
+  },
+  "source_out_dir": "output/periodic_table/t25_cinquefoil/out_ehn_relax",
+  "git_commit": "809740c",
+  "wall_s": 1210.0294921398163
+ },
+ "measured": {
+  "N": 192,
+  "L": 153.60000000000002,
+  "dx": 0.8,
+  "step_index": 24000,
+  "Lk_phi1_phi2": -5.0,
+  "phi1_knot": [
+   [
+    822,
+    5
+   ]
+  ],
+  "phi2_knot": [
+   [
+    332,
+    1
+   ]
+  ],
+  "phi1_skeleton_segments": 822
+ },
+ "energy_final": {
+  "n": 24000,
+  "Q": -4.664816207969558,
+  "C": 400.0,
+  "grad1": 1525.1049943421406,
+  "grad2": 1416.6564812228964,
+  "pot": -723.3574921728674,
+  "mag": 460.2138621021506,
+  "elec": 88.04996157105697,
+  "sky": 0.0,
+  "link": -14.633440321437558,
+  "total": 2766.667807065377
+ },
+ "validity": "",
+ "field": {
+  "file": "field.npz",
+  "sha256": "424dba57ac79188328f46cac6946ca573134ee9698797f0579ae08c044a35261"
+ },
+ "caveats": [
+  "engine-static: stationary only under the recorded integrator (outline \u00a75); re-settle in any other stepper",
+  "labels are field-state names, not K7-compendium rows nor SM particles (COMPENDIUM.md)"
+ ]
+}

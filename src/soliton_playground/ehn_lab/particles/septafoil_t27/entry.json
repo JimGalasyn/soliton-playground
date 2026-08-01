@@ -1,0 +1,66 @@
+{
+ "name": "septafoil_t27",
+ "description": "T(2,7) septafoil held 24k steps wrapped: Lk=-7.000, det=7 single component, Q=-6.46 retained (fleet 07-09, scored 07-11)",
+ "created": "2026-07-11 09:32",
+ "model": "ehn-two-scalar",
+ "relaxation": {
+  "integrator": "ehn_relax.relax_iter (EHN Eqs.12/13/11 interleaved gradient descent)",
+  "params": {
+   "N": 192,
+   "L": 153.6,
+   "nlink": 7,
+   "C": 400.0,
+   "alpha": 0.0001,
+   "beta": 0.002,
+   "U": 50.0,
+   "ic": "screened",
+   "cramp": 8000,
+   "agrad": "wrapped"
+  },
+  "source_out_dir": "output/periodic_table/t27_septafoil/out_ehn_relax",
+  "git_commit": "809740c",
+  "wall_s": 1342.8686537742615
+ },
+ "measured": {
+  "N": 192,
+  "L": 153.60000000000002,
+  "dx": 0.8,
+  "step_index": 24000,
+  "Lk_phi1_phi2": -7.0,
+  "phi1_knot": [
+   [
+    1148,
+    7
+   ]
+  ],
+  "phi2_knot": [
+   [
+    362,
+    1
+   ]
+  ],
+  "phi1_skeleton_segments": 1148
+ },
+ "energy_final": {
+  "n": 24000,
+  "Q": -6.46077082215015,
+  "C": 400.0,
+  "grad1": 2321.4451983228323,
+  "grad2": 1811.0299604442275,
+  "pot": -722.8679694178633,
+  "mag": 632.0930994749741,
+  "elec": 191.08011168045738,
+  "sky": 0.0,
+  "link": -25.192303990250725,
+  "total": 4232.780400504628
+ },
+ "validity": "",
+ "field": {
+  "file": "field.npz",
+  "sha256": "38a9c1acdacc90b267d38733d33566488a75f199ab0f545e01aa3f4519f0a8a2"
+ },
+ "caveats": [
+  "engine-static: stationary only under the recorded integrator (outline \u00a75); re-settle in any other stepper",
+  "labels are field-state names, not K7-compendium rows nor SM particles (COMPENDIUM.md)"
+ ]
+}

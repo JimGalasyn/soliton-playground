@@ -11,11 +11,49 @@ that same box — and produced a core reorganization that cannot be told apart f
 an under-resolution artifact. Two hours of GPU to learn something arithmetic would
 have flagged for free.
 
-The retired program built exactly this and it did NOT come across:
-`null-worldtube-private`, `simulations/engine_dogfood/standard_box.py` plus
-`analysis/STANDARD_BOX_SPEC.md` (the "standard box" / chamber, SB-1). Its shape is
-the thing to copy — walls as closed-form arithmetic with a `--envelope` preflight
-mode, calibrated against archived reference runs, plus acceptance BANDS:
+**Status changed 2026-08-01: the chamber is HERE now, for one preset.** The
+apparatus was migrated out of the deprecated `null-worldtube-private` into
+`src/soliton_playground/ehn_lab/` — `chamber.preflight(cfg)` returns typed drops in
+milliseconds, and `standard_box.py --envelope R=… C=…` prints the walls. So gate −1
+**exists and is runnable for `ehn-two-scalar`**, and remains **MISSING for
+`gpe-dimensionless` and for bare Faddeev**, which is where the census actually runs.
+The numbers below do not transfer to either (see the closing note).
+
+Two corrections to this section's original claims, both found by going and looking:
+
+- `analysis/STANDARD_BOX_SPEC.md` was cited as living in `null-worldtube-private`,
+  then corrected on 2026-08-01 to say it "does not, and never has" — **and that
+  correction was itself wrong.** The spec is in that repo: commit `d266443`,
+  2026-07-10, "STANDARD BOX spec v1 (Jim + C, for P riders)", on branch
+  `worktree-more-cosmogenesis`, present locally and on `origin`. It is absent only
+  from `main`, which is why looking at the working tree missed it. Retrieve with
+  `git show d266443:analysis/STANDARD_BOX_SPEC.md`.
+
+  So the constants are authoritative **by design, not by default**: the spec's
+  measured envelope and this battery agree exactly — `2349·(14/R)²·(C/400)²` with a
+  wrapped threshold of 147 (`THRESH["wrapped"]`), an R ceiling of 0.35·L
+  (`G2_R_MAX_FRAC`), `α ≲ O(dx²/λ)` and `ξ_c ≳ 2·dx`. The battery transcribes its
+  normative source faithfully.
+
+  **What that settles.** The open question was whether `R_min` is the R the wall was
+  calibrated on, or whether the wall expels its own calibration point. It is
+  neither: at C=400 the two walls have no common feasible region. Expulsion needs
+  R ≥ 55.96 (0.364·L); the g2 ceiling caps R ≤ 53.76 (0.35·L). Even at the most
+  favourable R the spec allows, el/mag = 159 against a threshold of 147. The
+  reported 909 corresponds to R ≈ 22.5, below the spec's seed range of
+  [0.2, 0.35]·L = [30.7, 53.8]. The largest C admitting a non-empty envelope is
+  **≈ 384**, so SB-1's stated `C-ramp→400` sits about 4% above feasibility. Either
+  the threshold is not 147 for this configuration, or SB-1 has been running just
+  outside the envelope its own spec draws.
+- `chamber.py` was described as being "on more-cosmogenesis". It had already been
+  ported into `null-worldtube-private` on 2026-07-29 as part of a farm-ownership
+  transfer, and now lives here. Its docstring still claims it plugs into
+  `jax_solitons.campaign.FarmCampaign`; that module no longer exists — the campaign
+  layer became `run_farm.farm.FarmCampaign`.
+
+Its shape is the thing to copy — walls as closed-form arithmetic with a
+`--envelope` preflight mode, calibrated against archived reference runs, plus
+acceptance BANDS:
 
     el_mag(R, C)      = 2349 * (14/R)^2 * (C/400)^2     # < 147 HOLDS, else EXPELS
     alpha_max(dx,lam) = 1e-4 * (dx/0.8)^2 * (1000/lam)  # step wall, ~dx^2
