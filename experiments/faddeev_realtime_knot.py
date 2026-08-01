@@ -57,6 +57,7 @@ confirmed by measurement rather than argued:
    geometry". Those ratios pin N ~ 96 -- the N they used. Corroborated by EHN
    finding 7 ("seed radius must be moderate, R ~ 0.25 L").
    TRANSFER RISK: that regime is the GAUGED model, and stability_compare.py says
+   (now at experiments/reference/stability_compare.py, migrated 2026-08-01)
    "bare L3 can UNWIND a low-Q knot while the L2 flux tube holds it open". Bare
    Faddeev may not hold at ANY geometry, so a failure here is NOT evidence
    against Q_H protection -- it may only mean the gauge sector is what protects.

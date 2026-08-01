@@ -6,9 +6,11 @@ Before gate 0 there should be **arithmetic walls on the parameters**, checked
 without running anything, saying whether the requested configuration is inside a
 regime where the entrant is known to behave. This protocol has no such gate, and
 the Faddeev real-time run is what the absence costs: it went out at N=64 in an
-L=18 box — half the resolution `stability_compare.py` uses for bare Faddeev in
-that same box — and produced a core reorganization that cannot be told apart from
-an under-resolution artifact. Two hours of GPU to learn something arithmetic would
+L=18 box — half the resolution
+[`stability_compare.py`](../experiments/reference/stability_compare.py) uses for
+bare Faddeev in that same box (N=128, L=18; its argparse defaults) — and produced
+a core reorganization that cannot be told apart from an under-resolution
+artifact. Two hours of GPU to learn something arithmetic would
 have flagged for free.
 
 **Status changed 2026-08-01: the chamber is HERE now, for one preset.** The
@@ -185,9 +187,14 @@ them before spending compute rather than after.
    measure is meant.
 
    **Supersede this gate with an eps\* barrier, per the prior program's protocol.**
-   The retired program's kick fleet (`null-worldtube-private`,
-   `simulations/engine_dogfood/eps_kick_batch.py`, `stability_compare.py`) did
-   this better in four ways, and its choices should be adopted:
+   The retired program's kick fleet did this better in four ways, and its choices
+   should be adopted. Both files were migrated into this repo on 2026-08-01, so
+   this is no longer a citation into a repo being retired:
+   [`experiments/eps_kick_batch.py`](../experiments/eps_kick_batch.py) (runnable)
+   and
+   [`experiments/reference/stability_compare.py`](../experiments/reference/stability_compare.py)
+   (reference only — it needs `nwt_engine` and `core_knot_id`, which did not
+   survive). Their choices:
    - **Kick the VELOCITY, not the field.** Their `bn = n0` is left untouched and
      the noise becomes the initial velocity, projected onto the constraint's
      tangent space (`w -= (w·n0) n0`). This injects kinetic energy without

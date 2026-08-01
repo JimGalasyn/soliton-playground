@@ -95,7 +95,7 @@ Protecting charge, all entries: **Lk(φ₁,φ₂) lock** — the linking number 
 | `unknot_bare` | T(1,1) † | −1.000 | 1 | 1 (288) | 24k | −0.92 | 931.3 |
 | `unknot_framed_twist1` | T(1,1) + twist 1 † | −1.000 | 1, 1 | 2 (290 + 224) | 24k | −0.89 | 1693.2 |
 
-† Seed radius not recorded anywhere in the tree — these came from one-off runs whose command line did not survive. The other six are recoverable verbatim from `run_periodic_table_fleet.py` or the entry's own description.
+† Seed radius not recorded anywhere in the tree — these came from one-off runs whose command line did not survive. The other six are recoverable verbatim from [`../experiments/reference/run_periodic_table_fleet.py`](../experiments/reference/run_periodic_table_fleet.py) (`--R 22.5`, and `--R 25.0` for the septafoil) or the entry's own description. That file was migrated into this repo on 2026-08-01; until then this sentence pointed into `null-worldtube-private`, so the promise would have expired with that repo.
 
 ‡ `trefoil_t23`'s R is **inferred**, not recorded: `standard_box.leg_B2` seeds R = 0.22 L = 33.792 and its 2026-07-29 N=192 arm reproduced `nseg1 = 978` — the exact segment count in this entry. Strong, but an inference.
 
@@ -115,14 +115,15 @@ Protecting charge, all entries: **Lk(φ₁,φ₂) lock** — the linking number 
 - **A re-run restores the physics, not the bytes.** `np.savez` output is not stable across engine versions and the writer itself changed on 2026-07-30, so a regenerated state will not match its declared sha256. The store labels that case `rederived` rather than accepting it as the original, because "same physics" and "same bytes" are different claims and the catalog's sha256 asserts the second.
 - **Provenance, recovered.** The recorded `git_commit` values (ee8abb3, 809740c, a8f6031, b999911, 12dd7ee, 8ca40b9) predate the extraction. They were described here as "unreachable from any repo now on this machine"; that was wrong — all six resolve in `null-worldtube-private`, checked 2026-08-01 with `git cat-file -e <sha>^{commit}`. The provenance is intact and each entry can still be traced to the commit that produced it.
 
-### Charter exemption: `source_out_dir`
+### Charter exemption: historical identifiers
 
-Two fields retain Standard-Model words, and both are recorded here rather than left to be discovered:
+Three places retain Standard-Model words, all recorded here rather than left to be discovered:
 
 - `source_out_dir` — `out_electron_n192` (`unknot_framed_twist1`) and `out_lepton_bare_n192` (`unknot_bare`).
 - `renamed_from` — `electron` and `lepton_bare` on those same two entries.
+- **Leg identifiers** in [`../experiments/reference/run_periodic_table_fleet.py`](../experiments/reference/run_periodic_table_fleet.py) — `conv48_lepton`, `conv48_electron`, `e_twistm1_positron`.
 
-Both are **historical facts, not identification claims**: the first is a filesystem path from July 2026, kept so the artifacts stay traceable; the second records what the entry used to be called, which is precisely the information a rename would otherwise destroy. Suppressing either would make the charter's own history unauditable. This is an explicit recorded exemption to the naming rule, not something that slipped past a regex — no field asserting what the state *is* carries such a label.
+All are **historical facts, not identification claims**: a filesystem path from July 2026, kept so the artifacts stay traceable; a record of what an entry used to be called, which is precisely the information a rename would otherwise destroy; and the command-line labels of the runs that produced these states. Suppressing any of them would make the charter's own history unauditable — and in the third case would falsify the recovery path the footnote below promises, since "verbatim" is the whole point. This is an explicit recorded exemption to the naming rule, not something that slipped past a regex — no field asserting what the state *is* carries such a label.
 
 ### Reading across presets
 
