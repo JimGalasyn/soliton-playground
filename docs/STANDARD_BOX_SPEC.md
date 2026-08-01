@@ -18,6 +18,13 @@ wall and the g2 ceiling have no common feasible region. Expulsion needs
 R >= 0.364*L, the ceiling caps R <= 0.35*L, and el/mag = 159 vs 147 even at the
 most favourable R this spec allows. The largest C admitting a non-empty envelope
 is ~384. See docs/CENSUS_PROTOCOL.md.
+
+Where the files this spec names now live, since the text predates the extraction:
+  standard_box.py -> src/soliton_playground/ehn_lab/standard_box.py
+  compose_pair.py -> experiments/compose_pair.py  (migrated 2026-08-01, so the
+                     "two-body composition" certified capability below is no
+                     longer a citation into a repo being retired)
+No sentence below has been changed to reflect that.
 -->
 
 # STANDARD BOX (SBX) — a certified stability domain + conformance battery for knot/link experiments

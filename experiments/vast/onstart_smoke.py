@@ -8,11 +8,17 @@ import sys
 import time
 from pathlib import Path
 
-from jax_solitons.campaign import VastProvider, HostSpec, LaunchSpec, VastLedger
-from jax_solitons.campaign.provider_exec import _ssh, DEFAULT_KEY
+# Repaired 2026-08-01. This script could not run: it imported
+# `jax_solitons.campaign`, which was extracted to run-farm in 0.0.8, and it read
+# its onstart payload from a hardcoded path inside null-worldtube-private -- a
+# private repo, on one machine, now being dismantled. Both are fixed here: the
+# symbols moved home without being renamed, and the onstart it wants is the
+# byte-identical sibling in this directory.
+from run_farm.vast import VastProvider, VastLedger
+from run_farm.protocols import HostSpec, LaunchSpec
+from run_farm.provider_exec import _ssh, DEFAULT_KEY
 
-ONSTART = Path(os.path.expanduser(
-    "~/repos/null-worldtube-private/simulations/engine_dogfood/vast/onstart.sh")).read_text()
+ONSTART = (Path(__file__).resolve().parent / "onstart.sh").read_text()
 IMG = "nvidia/cuda:12.2.2-runtime-ubuntu22.04"
 DEADLINE = 18 * 60
 POLL = 45
