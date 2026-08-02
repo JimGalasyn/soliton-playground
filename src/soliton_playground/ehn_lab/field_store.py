@@ -58,7 +58,8 @@ PROMOTED, 2026-08-02, to GitHub release assets. `objects/` stays gitignored --
 
     https://github.com/JimGalasyn/soliton-playground/releases/tag/ehn-catalog-states-v1
 
-one asset per catalog name (`trefoil_t23.npz` and so on), 792,724,422 B each.
+one asset per state, NAMED BY SHA256 (`<sha>.npz`, 792,724,422 B each) with the
+catalog name carried as the asset's display label.
 `fetch(name)` below pulls from there and REFUSES anything whose sha256 does not
 match `index.json`, so a corrupted or substituted download cannot enter the
 store quietly.
@@ -319,7 +320,12 @@ def fetch(name, *, force=False):
         print(f"{name} already held and intact -> {held}")
         return held
 
-    url = f"{RELEASE_URL}/{name}.npz"
+    # Assets are named by CONTENT HASH, not by catalog name. `gh release upload
+    # file#label` sets an asset's LABEL; its NAME stays the filename, and the
+    # download URL uses the name. So the URL is the sha -- which is the better
+    # form regardless: the filename itself declares what the bytes must hash to,
+    # and the check below is then a check on the thing the URL asked for.
+    url = f"{RELEASE_URL}/{want}.npz"
     OBJECTS.mkdir(parents=True, exist_ok=True)
     tmp = OBJECTS / f".fetch-{name}.part"
     print(f"fetching {name} <- {url}")
