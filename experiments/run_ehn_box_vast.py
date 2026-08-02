@@ -44,8 +44,13 @@ import sys
 from pathlib import Path
 
 from run_farm.fleet import FleetExecutor, FleetLeg, SentinelReady
+from run_farm.gauntlet import (GauntletError, OffersAvailable, OutDirWritable,
+                               ProviderCapable, ResumeMarkersIntended,
+                               SshKeyPresent, SshKeyRegistered, require_gauntlet)
 from run_farm.protocols import HostSpec, LaunchSpec
 from run_farm.vast import VastLedger, VastProvider
+
+from soliton_playground.ehn_lab.chamber import preflight as envelope_preflight
 
 HERE = Path(__file__).resolve().parent
 REPO = HERE.parent
@@ -122,6 +127,9 @@ def main():
     ap.add_argument("--ready-timeout", type=int, default=2400)
     ap.add_argument("--out", default="output/ehn_box")
     ap.add_argument("--dry-run", action="store_true")
+    ap.add_argument("--force-envelope", action="store_true",
+                    help="rent even if chamber.preflight reports the "
+                         "config is outside SB-1")
     a = ap.parse_args()
 
     blockers = unpushed_blockers()
@@ -164,6 +172,41 @@ def main():
     spec = HostSpec(gpu_name=a.gpu, num_gpus=1, max_dph=a.max_dph,
                     min_reliability=0.97, min_cuda=12.2, min_gpu_frac=1.0)
     launch = LaunchSpec(image=IMG, onstart=ONSTART, disk_gb=48, label=label)
+    # ---- guard layer 2 of 3: DOMAIN ENVELOPE (run_farm calls this `preflight`) --
+    # "don't pay for a config that can't hold." chamber.preflight is this engine's
+    # envelope, so the SB-1 walls are checked as arithmetic before any rental. The
+    # local 192-box runs were 6x outside the expulsion wall and nobody checked.
+    drops = envelope_preflight(dict(L=a.L, dx=a.L / a.N, lam=1000.0, alpha=a.alpha,
+                                    C=a.C, agrad="wrapped", R_min=a.R, xi_c=1.6))
+    if drops:
+        print("\nDOMAIN ENVELOPE violations (chamber.preflight):")
+        for d in drops:
+            print(f"  {d}")
+        print("  -> this configuration is outside SB-1. Continuing is a choice; "
+              "pass --force-envelope if that is deliberate.")
+        if not a.force_envelope:
+            return 5
+    else:
+        print("\n  domain envelope: inside SB-1 (chamber.preflight clean)")
+
+    # ---- guard layer 3 of 3: LOCAL LAUNCH ENVIRONMENT (the gauntlet) -----------
+    # Everything that can fail for $0. PayloadClosed is deliberately absent: this
+    # leg ships nothing (the box pip-installs both repos from main), so there is no
+    # flat payload to close over -- and a check that cannot fail is not a check.
+    print()
+    try:
+        require_gauntlet([
+            SshKeyPresent(),
+            SshKeyRegistered(provider),
+            ProviderCapable(provider),
+            OffersAvailable(provider, spec),
+            OutDirWritable(outdir),
+            ResumeMarkersIntended([leg], outdir),
+        ])
+    except GauntletError:
+        print("\nGAUNTLET FAILED — nothing rented, nothing spent.")
+        return 6
+
     ex = FleetExecutor(provider=provider, host=spec, launch=launch,
                        ready=SentinelReady(), outdir=outdir,
                        ready_timeout=a.ready_timeout, run_timeout=a.run_timeout)
