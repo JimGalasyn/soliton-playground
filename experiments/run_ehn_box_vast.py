@@ -158,8 +158,11 @@ def main():
 
     ledger = VastLedger(outdir / "vast_ledger.jsonl")
     provider = VastProvider(ledger=ledger)
+    # min_gpu_frac=1.0: a whole box, no GPU-sharing tenants. N=320 is ~10 GB of
+    # state plus autodiff workspace, so a co-tenant that spikes VRAM does not
+    # slow this run, it kills it.
     spec = HostSpec(gpu_name=a.gpu, num_gpus=1, max_dph=a.max_dph,
-                    min_reliability=0.97, min_cuda=12.2, interruptible=False)
+                    min_reliability=0.97, min_cuda=12.2, min_gpu_frac=1.0)
     launch = LaunchSpec(image=IMG, onstart=ONSTART, disk_gb=48, label=label)
     ex = FleetExecutor(provider=provider, host=spec, launch=launch,
                        ready=SentinelReady(), outdir=outdir,
