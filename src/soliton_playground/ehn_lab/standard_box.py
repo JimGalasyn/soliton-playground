@@ -46,9 +46,10 @@ archived reference runs cited next to each):
                       a degenerate winding detector — read +25% high before
                       the off-nudge; the guard rebuilds a small IC and
                       demands the tracer reads the seeded Lk).
-  B6 stability margin B2 trajectory: no NaN, post-ramp E monotone; then a
-                      500-step resume at 4x alpha (EHN's own 4e-4) must stay
-                      finite + non-increasing = the >=4x headroom.
+  B6 stability margin B2 trajectory: no NaN, post-ramp E monotone; then
+                      resumes at 2x and 4x alpha, PASSING at >=2x. The 4x
+                      (EHN's own 4e-4) is a recorded hypothesis, not a
+                      requirement -- and it is now measured FALSE: see below.
   B7 map fidelity     (conditional, --with-m1) M1 magnification phi(x) ->
                       phi(x/s): per-realization Lk + component count
                       preserved; lost-loop fraction receipted.
@@ -58,6 +59,25 @@ Reference calibration (archived runs, this engine, N=192):
   bilinear trefoil 12k: Q=-0.010 link=-7% el=27  Lk=-3.0 (geometry held,
                         charges dead)                    [out_trefoil_t23_n192*]
   36k hold: 978 skeleton segments bit-stable 12k->36k (zero shrink).
+
+Alpha headroom, MEASURED 2026-08-02 (200 steps from a settled trefoil, N=192
+dx=0.8 lam=1000) -- B6's "spec_hypothesis_4x" resolves to FALSE:
+  2.00e-4 (2x)    E=3333.3 Lk=-3.0   survives
+  2.05e-4         E=3334.3 Lk=-3.0   survives
+  2.50e-4 (2.5x)  E=3332.1 Lk=-3.0   survives, MARGINAL
+  3.00e-4 (3x)    E=7.2e8            diverges
+  4.00e-4 (4x)    NaN                diverges
+So the measured headroom is 2x-2.5x, and B6's >=2x pass criterion is the right
+one; the >=4x in the original spec was never achievable. The cliff sits where
+the leg's own comment predicted, 2/(8*lam) = 2.5e-4 -- 2.5e-4 surviving is the
+marginal case (|1-alpha*H| = 1), not a refutation. This is the rider-1
+correction the leg was written to trigger.
+
+NOTE for any refinement below dx ~ 0.1: 8*lam is the potential-dominated
+plateau only. The Hessian grows as 1/dx^2 once the gradient and gauge (U/dx^2)
+terms take over, so the cliff MOVES -- 1.30e-4 at dx=0.1, 3.27e-5 at dx=0.05.
+Nothing in this box refines that far, but a successor might; see
+jax_solitons.ehn.relax's module docstring for the table.
 
   python -m soliton_playground.ehn_lab.standard_box --battery --quick   # N=96 smoke
   python -m soliton_playground.ehn_lab.standard_box --battery           # SB-1 cert
