@@ -80,6 +80,33 @@ def build_command(a, engine_commit):
         f"; echo \"exit=$?\" > {out}/DONE)")
 
 
+
+def remote_exit(outdir, leg):
+    """The exit status the REMOTE command recorded in its done_when marker.
+
+    `LegResult.ok` means the marker ARRIVED, not that the job worked. This run
+    proved the difference the expensive way: a 51-minute rental reported
+    "LEG T2_5_N320_R64: OK" while the marker read exit=1 and no field.npz existed
+    -- the box OOMed 0.92 s in. Reading the marker is what separates "the
+    artifacts arrived" from "the job did something".
+
+    None means NO EVIDENCE, never success: no marker, an unparseable body, or a
+    done_when that is not an exit= file. A caller that treats None as a pass has
+    reintroduced the bug.
+    """
+    marker = Path(outdir) / leg.label / leg.done_when
+    try:
+        body = marker.read_text().strip()
+    except OSError:
+        return None
+    if not body.startswith("exit="):
+        return None
+    try:
+        return int(body[len("exit="):])
+    except ValueError:
+        return None
+
+
 def unpushed_blockers():
     """Refuse to rent while the box would install code OLDER than what we ran.
 
@@ -120,8 +147,12 @@ def main():
     ap.add_argument("--samples", type=int, default=24)
     ap.add_argument("--save-every", type=int, default=3000,
                     help="checkpoints; the field is the deliverable")
-    ap.add_argument("--gpu", default="RTX_4090",
-                    help="needs >=24 GB: N=320 is ~10 GB of state + autodiff")
+    ap.add_argument("--gpu", default="A100_SXM4",
+                    help="N=320 needs an A100-class card. A 24 GB RTX_4090 was "
+                         "tried and OOMed 0.92 s in, before one relaxation step: "
+                         "reverse-mode AD over 10 fields at 320^3 float64 holds "
+                         "far more than the 3.4 GB the state alone suggests. "
+                         "examples/ehn_knot_soliton.py said A100-class; it was right.")
     ap.add_argument("--max-dph", type=float, default=0.60)
     ap.add_argument("--run-timeout", type=int, default=9000)
     ap.add_argument("--ready-timeout", type=int, default=2400)
@@ -224,14 +255,25 @@ def main():
     # a failure reading as success, which is the exact class of bug LegResult's
     # own docstring says BAD_ARTIFACTS was split out to prevent.
     results = ex.run([leg])
-    for r in results:
-        print(f"  {r.label}: {r.status}"
-              + (f"  host={r.host_id}" if r.host_id else "")
-              + (f"  {r.detail}" if r.detail else ""))
     if not results:
         print("  NO LEGS RAN — treat as failure, not as success")
         return 1
-    return 0 if all(r.ok for r in results) else 1
+
+    bad = False
+    for r in results:
+        code = remote_exit(outdir, leg)
+        # LegResult.ok says the marker ARRIVED. The marker's CONTENT says whether
+        # the job worked. Both must be good, and "no evidence" is not good.
+        verdict = ("OK" if (r.ok and code == 0) else
+                   "FETCHED BUT FAILED" if (r.ok and code not in (0, None)) else
+                   "FETCHED, NO EXIT EVIDENCE" if r.ok else r.status)
+        bad = bad or verdict != "OK"
+        print(f"  {r.label}: fleet={r.status}  remote_exit={code}  -> {verdict}"
+              + (f"  host={r.host_id}" if r.host_id else ""))
+        if verdict != "OK":
+            print(f"    artifacts are in {outdir/leg.label}; the relaxation did NOT "
+                  f"complete, so any manifest there is a partial record")
+    return 1 if bad else 0
 
 
 if __name__ == "__main__":

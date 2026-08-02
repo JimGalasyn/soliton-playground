@@ -1,0 +1,6 @@
+{"dph": 0.29262962962962963, "event": "rented", "geo": "Quebec, CA", "gpu": "RTX 4090", "instance_id": 46643731, "offer_id": "38186209", "provider": "vast", "reliability": 0.9979232, "ts": 1785705870.103}
+{"event": "running", "instance_id": 46643731, "offer_id": "38186209", "provider": "vast", "provision_s": 350.4, "ts": 1785706219.854}
+{"billed_s": 2753.6, "destroyed": true, "est_cost_usd": 0.2238, "event": "destroyed", "instance_id": 46643731, "offer_id": "38186209", "outcome": "host_failed", "provider": "vast", "reason": "worker not ready on 46643731 within 2400s", "ts": 1785708624.199, "verify": "gone"}
+{"dph": 0.3347222222222222, "event": "rented", "geo": "Taiwan, TW", "gpu": "RTX 4090", "instance_id": 46646833, "offer_id": "44901390", "provider": "vast", "reliability": 0.9909738, "ts": 1785708627.858}
+{"event": "running", "instance_id": 46646833, "offer_id": "44901390", "provider": "vast", "provision_s": 96.9, "ts": 1785708723.973}
+{"billed_s": 311.9, "destroyed": true, "est_cost_usd": 0.029, "event": "destroyed", "instance_id": 46646833, "offer_id": "44901390", "outcome": "ok", "provider": "vast", "reason": "", "ts": 1785708940.06, "verify": "gone"}
