@@ -53,16 +53,31 @@ right reason.
 They were never regenerated because they were never actually missing — only
 unfindable. That is the argument for this store existing.
 
-PROMOTION. `objects/` is gitignored because 7.4 GB does not belong in git. The
-store is local-first and self-describing: `index.json` is tracked, so the repo
-states what is held, and `status()` derives what is missing from the tracked
-catalog. To promote,
-either enable git-lfs on `objects/**` where a push works, or `tar` the store and
-attach it to a release — the layout is designed to survive both without a
-rewrite, since object names are content hashes.
+PROMOTED, 2026-08-02, to GitHub release assets. `objects/` stays gitignored --
+7.4 GB does not belong in git -- but the states are no longer local-only:
+
+    https://github.com/JimGalasyn/soliton-playground/releases/tag/ehn-catalog-states-v1
+
+one asset per catalog name (`trefoil_t23.npz` and so on), 792,724,422 B each.
+`fetch(name)` below pulls from there and REFUSES anything whose sha256 does not
+match `index.json`, so a corrupted or substituted download cannot enter the
+store quietly.
+
+Releases rather than git-lfs, deliberately: lfs would need ~7.4 GB of paid quota
+on a public repo and is painful to undo (history rewrite plus a support request
+to reclaim the storage), while release assets cost nothing, allow 2 GB per file
+against our 757 MB, and delete cleanly. The layout survived the choice without a
+rewrite because object names are content hashes -- which is what that property
+was for.
+
+The store is still local-first and self-describing: `index.json` is tracked, so
+the repo states what is held, and `status()` derives what is missing from the
+tracked catalog.
 
   python field_store.py status                     what is held / missing
   python field_store.py put <name> <field.npz>     verify, hash, store
+  python field_store.py fetch [<name>]             download from the release,
+                                                   sha-checked (omit name = all missing)
   python field_store.py materialize [<name>]       link into particles/<name>/
   python field_store.py verify                     re-CRC everything held
 """
@@ -94,6 +109,12 @@ CATALOG = _HERE / "particles"
 STORE = Path(os.environ.get("SOLITON_FIELD_STORE") or (_repo_root() / "field_store"))
 OBJECTS = STORE / "objects"
 INDEX = STORE / "index.json"
+
+# Where promoted objects live (see PROMOTION in the module docstring). One asset
+# per catalog name; the sha256 in index.json is what makes a download trustworthy.
+RELEASE_TAG = "ehn-catalog-states-v1"
+RELEASE_URL = ("https://github.com/JimGalasyn/soliton-playground/releases/"
+               f"download/{RELEASE_TAG}")
 
 FIELD_NAME = "field.npz"
 
@@ -254,6 +275,62 @@ def get(name, *, verify=True):
     return p
 
 
+def fetch(name, *, force=False):
+    """Download `name` from the release and store it, refusing any mismatch.
+
+    The point of the sha256 is that a download is not trusted because it came
+    from the right URL -- it is trusted because its bytes hash to what the
+    catalog declared. A substituted, truncated or re-derived asset fails here
+    rather than in whoever reads the state next, which is the same rule `put`
+    enforces for local files.
+    """
+    import urllib.request
+
+    want = declared_sha(catalog_entries().get(name)) or (load_index().get(name) or {}).get("sha256")
+    if not want and not force:
+        raise SystemExit(f"REFUSED {name}: no declared sha256 to check a download "
+                         f"against. Pass --force only if you intend to trust the "
+                         f"asset on its filename alone.")
+
+    held = get(name)
+    if held and not force:
+        print(f"{name} already held and intact -> {held}")
+        return held
+
+    url = f"{RELEASE_URL}/{name}.npz"
+    OBJECTS.mkdir(parents=True, exist_ok=True)
+    tmp = OBJECTS / f".fetch-{name}.part"
+    print(f"fetching {name} <- {url}")
+    try:
+        with urllib.request.urlopen(url) as r, open(tmp, "wb") as out:
+            while chunk := r.read(1 << 22):
+                out.write(chunk)
+    except Exception as e:                                   # noqa: BLE001
+        tmp.unlink(missing_ok=True)
+        raise SystemExit(f"REFUSED {name}: download failed -- {e}")
+
+    got = sha256_file(tmp)
+    if want and got != want:
+        tmp.unlink(missing_ok=True)
+        raise SystemExit(f"REFUSED {name}: sha256 {got[:12]} != declared {want[:12]}. "
+                         f"Not the state the catalog describes; nothing stored.")
+    why = verify_npz(tmp)
+    if why:
+        tmp.unlink(missing_ok=True)
+        raise SystemExit(f"REFUSED {name}: downloaded archive is not intact -- {why}")
+
+    dest = object_path(got)
+    dest.parent.mkdir(parents=True, exist_ok=True)
+    os.replace(tmp, dest)
+    ix = load_index()
+    ix[name] = {"sha256": got, "declared_sha256": want, "bytes": dest.stat().st_size,
+                "added": time.strftime("%Y-%m-%dT%H:%M:%S"), "rederived": False,
+                "source": url, "note": f"fetched from release {RELEASE_TAG}"}
+    save_index(ix)
+    print(f"stored {name}  sha256 {got[:12]}…  {dest.stat().st_size:,} B")
+    return dest
+
+
 def materialize(name, *, link=True):
     """Place the held state at `particles/<name>/field.npz`, where every existing
     consumer already looks (`particle_catalog.load`, `_measure`, `leg_B5`).
@@ -370,6 +447,9 @@ def main():
                        help="store even without a catalog entry")
     p_mat = sub.add_parser("materialize", help="link held states into particles/")
     p_mat.add_argument("name", nargs="?", default=None)
+    p_fetch = sub.add_parser("fetch", help="download states from the release, sha-checked")
+    p_fetch.add_argument("name", nargs="?", default=None, help="omit to fetch all missing")
+    p_fetch.add_argument("--force", action="store_true", help="re-fetch even if held")
     sub.add_parser("verify", help="re-CRC everything held (exit 1 on any problem)")
     a = ap.parse_args()
 
@@ -377,6 +457,14 @@ def main():
         return _print_status()
     if a.cmd == "put":
         put(a.name, a.path, note=a.note, force=a.force)
+        return 0
+    if a.cmd == "fetch":
+        names = [a.name] if a.name else [n for n in catalog_entries() if not get(n)]
+        if not names:
+            print("nothing to fetch — all catalog states are held and intact")
+            return 0
+        for n in names:
+            fetch(n, force=a.force)
         return 0
     if a.cmd == "materialize":
         names = [a.name] if a.name else list(load_index())
