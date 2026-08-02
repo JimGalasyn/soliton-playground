@@ -8,12 +8,13 @@ outputs/
 
 # field_store/objects holds the ONLY copy of states that cost GPU-hours, so this
 # is a deployment limit rather than a judgement that they are disposable (`*.npz`
-# above already catches them; this is here to be found). Push is blocked on this
-# machine, so git-lfs here could not reach anywhere. field_store/index.json is NOT
-# ignored, so it will be tracked once the first `put` creates it — with 0/10 held
-# it does not exist yet. What is MISSING is legible from the tracked catalog
-# regardless, which is the half that matters while the store is empty.
-# See src/soliton_playground/ehn_lab/field_store.py, PROMOTION, before changing.
+# above already catches them; this is here to be found). 7.4 GB does not belong
+# in git; see field_store.py PROMOTION for the lfs / release-tarball routes.
+# field_store/index.json is NOT ignored and IS tracked, so the repo states what
+# is held — 10/10 as of 2026-08-02, when the states were recovered from
+# null-worldtube-private. What is MISSING stays derivable from the tracked
+# catalog regardless.
+# See src/soliton_playground/ehn_lab/field_store.py, RECOVERY and PROMOTION.
 field_store/objects/
 !field_store/index.json
 

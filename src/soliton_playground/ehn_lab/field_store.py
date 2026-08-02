@@ -16,9 +16,9 @@ already the catalog's primary key, so no entry schema changes.
 
     field_store/
       objects/<sha[:2]>/<sha>.npz     the states (gitignored, see PROMOTION)
-      index.json                      what is held + where it came from. Written on
-                                      the first `put`, so with 0 held it does not
-                                      exist yet and is NOT in git today.
+      index.json                      what is held + where it came from (tracked;
+                                      created by the first `put`, which happened
+                                      2026-08-02 — see RECOVERY below)
 
 DESIGN RULES, each one a bug this program has already paid for:
 
@@ -38,14 +38,25 @@ DESIGN RULES, each one a bug this program has already paid for:
     `rederived`, because "same physics" and "same bytes" are different claims
     and the catalog's sha256 asserts the second.
 
-PROMOTION. `objects/` is gitignored today because push is blocked on this
-machine for BOTH repos, so committing ~860 MB to git-lfs here could not reach
-anywhere. The store is local-first and self-describing, but be exact about which
-half: what is MISSING is legible from the repo alone, because `status()` derives
-it from the tracked catalog. What is HELD is recorded in `index.json`, which the
-first `put` creates — with 0/10 held that file does not exist yet, so the claim
-"the index is tracked" is a statement about the intended steady state and not
-about this commit. To promote,
+RECOVERY, 2026-08-02. This store was built to hold ten states that three separate
+documents recorded as lost: `status()` said 0/10 held, `docs/BESTIARY.md` said
+"All ten states are gone", and refilling them was costed at a 24 GB GPU. **All
+ten were found**, gitignored, in `null-worldtube-private`
+(`simulations/engine_dogfood/out_*_n192*` and `output/periodic_table/*/out_ehn_relax`),
+and every sha256 matches what the catalog declared in July — so none is
+`rederived`; they are the originals. `put` CRC-verified each on the way in, and
+`leg_B5` now conforms 10 of 10 against their registrations, reproducing July's
+linking numbers and knot determinants exactly. The gate that reported
+`B5_tracer_conformance: False` for the right reason now reports True for the
+right reason.
+
+They were never regenerated because they were never actually missing — only
+unfindable. That is the argument for this store existing.
+
+PROMOTION. `objects/` is gitignored because 7.4 GB does not belong in git. The
+store is local-first and self-describing: `index.json` is tracked, so the repo
+states what is held, and `status()` derives what is missing from the tracked
+catalog. To promote,
 either enable git-lfs on `objects/**` where a push works, or `tar` the store and
 attach it to a release — the layout is designed to survive both without a
 rewrite, since object names are content hashes.
