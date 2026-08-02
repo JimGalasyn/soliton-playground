@@ -189,6 +189,18 @@ def object_path(sha):
     return OBJECTS / sha[:2] / f"{sha}.npz"
 
 
+def manifest_path(sha):
+    """The run manifest that travels with an object.
+
+    A field alone is not usable: `render_portrait.load_field` reads the box size
+    L from manifest.json beside it, and the catalog's own `_measure` needs the
+    same geometry. Storing only the .npz produced a directory that LOOKED
+    complete and failed on the second file -- the exact shape of failure this
+    store exists to prevent. So the manifest is a first-class object here.
+    """
+    return OBJECTS / sha[:2] / f"{sha}.manifest.json"
+
+
 def catalog_entries():
     """{name: entry-dict} for every registered particle."""
     out = {}
@@ -227,6 +239,7 @@ def put(name, src, *, note="", force=False):
     want = declared_sha(entries.get(name))
     rederived = bool(want) and sha != want
 
+    src_manifest = src.parent / "manifest.json"
     dest = object_path(sha)
     if not dest.exists():
         dest.parent.mkdir(parents=True, exist_ok=True)
@@ -244,6 +257,14 @@ def put(name, src, *, note="", force=False):
             dest.unlink(missing_ok=True)
             raise SystemExit(f"REFUSED {name}: stored copy failed re-check -- {why}")
 
+    # The manifest travels with the field. Without it `render_portrait.load_field`
+    # cannot read the box size and the state is unusable, so a store that keeps
+    # only the .npz is a store that hands out half a state.
+    held_manifest = False
+    if src_manifest.exists():
+        _atomic_write_text(manifest_path(sha), src_manifest.read_text())
+        held_manifest = True
+
     ix = load_index()
     ix[name] = {
         "sha256": sha,
@@ -252,6 +273,7 @@ def put(name, src, *, note="", force=False):
         "bytes": dest.stat().st_size,
         "added": time.strftime("%Y-%m-%d %H:%M:%S"),
         "source": str(src),
+        "manifest": held_manifest,
         "note": note,
     }
     save_index(ix)
@@ -331,6 +353,19 @@ def fetch(name, *, force=False):
     return dest
 
 
+def _place_manifest(name, dest):
+    """Put the held manifest beside a materialized field.
+
+    Called on EVERY return path of `materialize`, including the one that finds
+    the field already linked -- "already linked" is not "already complete", and
+    an early return that skips this is how a directory ends up with a field and
+    no geometry.
+    """
+    mp = manifest_path((load_index().get(name) or {}).get("sha256", ""))
+    if mp.exists():
+        _atomic_write_text(dest.parent / "manifest.json", mp.read_text())
+
+
 def materialize(name, *, link=True):
     """Place the held state at `particles/<name>/field.npz`, where every existing
     consumer already looks (`particle_catalog.load`, `_measure`, `leg_B5`).
@@ -345,6 +380,7 @@ def materialize(name, *, link=True):
     dest.parent.mkdir(parents=True, exist_ok=True)
     if dest.exists():
         if dest.stat().st_ino == src.stat().st_ino:
+            _place_manifest(name, dest)     # already linked is not already complete
             return dest
         dest.unlink()
     try:
@@ -360,6 +396,8 @@ def materialize(name, *, link=True):
             fout.flush()
             os.fsync(fout.fileno())
         os.replace(tmp, dest)
+
+    _place_manifest(name, dest)
     return dest
 
 

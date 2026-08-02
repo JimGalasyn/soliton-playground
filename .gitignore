@@ -15,8 +15,19 @@ outputs/
 # null-worldtube-private. What is MISSING stays derivable from the tracked
 # catalog regardless.
 # See src/soliton_playground/ehn_lab/field_store.py, RECOVERY and PROMOTION.
-field_store/objects/
+field_store/objects/**
+!field_store/objects/
+!field_store/objects/*/
+# The .npz stay out (757 MB each). The run MANIFESTS do not: 10 KB apiece, not
+# regenerable, and render_portrait.load_field cannot read a field's box size
+# without one. Tracking them is what lets this repo render its own catalog
+# without reaching into null-worldtube-private, which is being retired.
+!field_store/objects/**/*.manifest.json
 !field_store/index.json
+
+# Materialized copies under particles/ are artifacts of `field_store materialize`
+# -- the store holds the authoritative one. Field and manifest both stay out.
+src/soliton_playground/ehn_lab/particles/*/manifest.json
 
 # Battery run artifacts, reproducible from the engine SHA; not source.
 src/soliton_playground/ehn_lab/certificates/
