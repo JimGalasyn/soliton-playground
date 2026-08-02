@@ -215,10 +215,23 @@ def main():
         print("\nGAUNTLET FAILED — nothing rented, nothing spent.")
         return 6
 
-    ex = FleetExecutor(provider=provider, host=spec, launch=launch,
-                       ready=SentinelReady(), outdir=outdir,
-                       ready_timeout=a.ready_timeout, run_timeout=a.run_timeout)
-    return 0 if ex.run([leg]) else 1
+    ex = FleetExecutor(provider, launch, local_out_dir=str(outdir),
+                       host_spec=spec, ready=SentinelReady(),
+                       ready_timeout=a.ready_timeout, run_timeout=a.run_timeout,
+                       ledger=ledger, max_parallel=1)
+    # ex.run returns list[LegResult], NOT a bool. `if ex.run(...)` is truthy for a
+    # non-empty list, so a RUN_FAIL / BAD_ARTIFACTS leg would have exited 0 --
+    # a failure reading as success, which is the exact class of bug LegResult's
+    # own docstring says BAD_ARTIFACTS was split out to prevent.
+    results = ex.run([leg])
+    for r in results:
+        print(f"  {r.label}: {r.status}"
+              + (f"  host={r.host_id}" if r.host_id else "")
+              + (f"  {r.detail}" if r.detail else ""))
+    if not results:
+        print("  NO LEGS RAN — treat as failure, not as success")
+        return 1
+    return 0 if all(r.ok for r in results) else 1
 
 
 if __name__ == "__main__":
