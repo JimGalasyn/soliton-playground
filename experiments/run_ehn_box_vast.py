@@ -59,26 +59,108 @@ PIP_ENGINE = "git+https://github.com/JimGalasyn/jax-solitons"
 PIP_LAB = "git+https://github.com/JimGalasyn/soliton-playground"
 
 
-def build_command(a, engine_commit):
-    """`; echo exit=$?` rather than `&&`: the relaxed field is the deliverable,
-    and the marker must carry the exit code so a fetched-but-failed leg is
-    distinguishable from a fetched-and-fine one. A marker whose mere existence
-    means success is the trap run_b2_vast.py exists to document.
-    """
-    out = "out_ehn_box"
+def relax_args(a, out):
+    """The engine invocation, without any of the launch scaffolding."""
     return (
-        f"cd /workspace && mkdir -p {out} && "
-        f"export ENGINE_COMMIT={engine_commit} && "
-        f"/workspace/jaxenv/bin/pip install -q '{PIP_ENGINE}' '{PIP_LAB}' && "
-        f"(/workspace/jaxenv/bin/python -m jax_solitons.ehn.relax "
+        f"-m jax_solitons.ehn.relax "
         f"--geom torus --tp {a.tp} --tq {a.tq} --R {a.R} "
         f"--N {a.N} --L {a.L} --C {a.C} --U 50 "
         f"--alpha {a.alpha} --beta 2e-3 --cramp 8000 --agrad wrapped "
         f"--ic screened --steps {a.steps} --samples {a.samples} "
         f"--topo-every {a.topo_every} "
         f"--det-every {a.det_every} --det-timeout {a.det_timeout} "
-        f"--save-every {a.save_every} --out {out} "
-        f"; echo \"exit=$?\" > {out}/DONE)")
+        f"--save-every {a.save_every} --out {out}")
+
+
+def build_command(a, engine_commit):
+    """A RE-ENTERABLE leg: launch the relaxation detached, then wait on the marker.
+
+    WHY NOT JUST RUN IT. The old shape ran the engine as the ssh command's own
+    child, so the relaxation died with the channel. On 2026-08-03 `ssh5.vast.ai`
+    stopped responding 5500 steps into a 12000-step N=320 run; ssh returned 255,
+    the A100 was perfectly alive, and the leg was filed terminal RUN_FAIL -- so the
+    box was destroyed with its checkpoint still on it. Detaching alone would not
+    have saved it, because the fleet tears the host down when the leg returns; what
+    saves it is `reattachable=True` (run-farm) plus a command that can be re-run
+    against the same box WITHOUT starting a second relaxation.
+
+    That is the contract this script implements, and every branch of it exists
+    because the naive version gets something wrong:
+
+      DONE exists          the job finished during the blip -> exit 0, touch nothing
+      PID live on THIS box a reattach -> resume WAITING, do not relaunch
+      otherwise            launch detached, record boot_id + pid
+
+    The pidfile records the BOOT ID as well as the pid, and both must match. That
+    is not paranoia: `resumable=True` restores the local partial onto a REPLACEMENT
+    host, PID file included, where that number means a different process or none at
+    all -- so a bare pid check would 'reattach' to an unrelated process and wait out
+    the whole timeout.
+
+    `; echo exit=$?` into DONE is kept: the marker must carry the exit code so a
+    fetched-but-failed leg is distinguishable from a fetched-and-fine one. Note the
+    exit code the FLEET sees is now the wait loop's, which is what makes run-farm's
+    255-means-transport inference sound -- the payload can no longer produce a 255.
+    """
+    out = "out_ehn_box"
+    py = "/workspace/jaxenv/bin/python"
+    # A heredoc rather than a nested-quote one-liner: this needs `if`, a loop and a
+    # subshell, and the version of it that fits on one line is unreadable and was
+    # where the quoting bugs lived.
+    return (
+        f"cd /workspace && mkdir -p {out} && "
+        f"export ENGINE_COMMIT={engine_commit} && "
+        f"/workspace/jaxenv/bin/pip install -q '{PIP_ENGINE}' '{PIP_LAB}' && "
+        f"cat > leg.sh <<'EOSCRIPT'\n"
+        f"set -u\n"
+        f"OUT={out}\n"
+        f"PY={py}\n"
+        f"BOOT=$(cat /proc/sys/kernel/random/boot_id)\n"
+        f'if [ -f "$OUT/DONE" ]; then echo "already complete: $(cat $OUT/DONE)"; exit 0; fi\n'
+        f'RUNNING=no\n'
+        f'if [ -s "$OUT/PID" ]; then\n'
+        f'  read -r PBOOT PPID_ < "$OUT/PID" || true\n'
+        f'  if [ "$PBOOT" = "$BOOT" ] && kill -0 "$PPID_" 2>/dev/null; then RUNNING=yes; fi\n'
+        f'fi\n'
+        f'if [ "$RUNNING" = yes ]; then\n'
+        f'  echo "REATTACHED to live pid $PPID_ on this box; not relaunching"\n'
+        f'else\n'
+        f'  RESUME=""\n'
+        f'  if [ -f "$OUT/field.npz" ]; then\n'
+        # Structural check only (reads the zip central directory), which is exactly
+        # what a truncated transfer breaks and is O(1) rather than CRC-ing 3.7 GB.
+        # It does NOT prove the members are intact; np.load would fail later if not.
+        f'    if "$PY" -c "import zipfile; zipfile.ZipFile(\'$OUT/field.npz\').namelist()" 2>/dev/null; then\n'
+        f'      RESUME="--resume $OUT/field.npz"; echo "RESUMING from $OUT/field.npz"\n'
+        f'    else\n'
+        # Deleted, not renamed: it is provably unopenable, and anything left inside
+        # $OUT gets fetched -- so keeping it would drag GB of known garbage back
+        # over the same link that tore it.
+        f'      echo "DISCARDING $OUT/field.npz: not a readable zip (torn restore)"\n'
+        f'      rm -f "$OUT/field.npz"\n'
+        f'    fi\n'
+        f'  fi\n'
+        f'  setsid nohup bash -c "$PY {relax_args(a, out)} $RESUME ; '
+        f'echo \\"exit=\\$?\\" > $OUT/DONE" > "$OUT/run.log" 2>&1 < /dev/null &\n'
+        f'  echo "$BOOT $!" > "$OUT/PID"\n'
+        f'  echo "LAUNCHED detached: $(cat $OUT/PID)"\n'
+        f'fi\n'
+        # The payload can die without writing DONE (an OOM kill takes the shell
+        # too). Noticing that costs one poll; not noticing it burns the entire
+        # --run-timeout on a box that is doing nothing, which is money.
+        f'while [ ! -f "$OUT/DONE" ]; do\n'
+        f'  read -r PBOOT PPID_ < "$OUT/PID" || true\n'
+        f'  if ! kill -0 "$PPID_" 2>/dev/null; then\n'
+        f'    sleep 5\n'
+        f'    if [ ! -f "$OUT/DONE" ]; then\n'
+        f'      echo "payload pid $PPID_ vanished with no DONE marker"; exit 1\n'
+        f'    fi\n'
+        f'  fi\n'
+        f'  sleep 15\n'
+        f'done\n'
+        f'echo "marker: $(cat $OUT/DONE)"\n'
+        f"EOSCRIPT\n"
+        f"bash leg.sh")
 
 
 
@@ -246,9 +328,15 @@ def main():
           f"({a.ready_timeout/3600:.2f} hr ready-timeout x ${a.max_dph}/hr, "
           f"one failed host)")
 
+    # reattachable: build_command's script is re-enterable (boot-id + pid guard,
+    # then wait on the marker), so run-farm may retry the ssh channel against the
+    # SAME live box instead of filing a transport failure as a failed job. Without
+    # the re-enterable script this flag would start a second relaxation racing the
+    # first; the two go together and neither is useful alone.
     leg = FleetLeg(label=label, command=build_command(a, commit),
                    ship=(), fetch="out_ehn_box",
-                   done_when="out_ehn_box/DONE", resumable=True)
+                   done_when="out_ehn_box/DONE", resumable=True,
+                   reattachable=True)
 
     if a.dry_run:
         print(f"\n1 leg -> {outdir}\n  fetch: {leg.fetch}  done_when: {leg.done_when}")
