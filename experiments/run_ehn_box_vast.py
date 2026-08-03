@@ -43,10 +43,9 @@ import subprocess
 import sys
 from pathlib import Path
 
+from run_farm.budget import BudgetExceeded, CappedProvider, estimate
 from run_farm.fleet import FleetExecutor, FleetLeg, SentinelReady
-from run_farm.gauntlet import (GauntletError, OffersAvailable, OutDirWritable,
-                               ProviderCapable, ResumeMarkersIntended,
-                               SshKeyPresent, SshKeyRegistered, require_gauntlet)
+from run_farm.gauntlet import GauntletError, require_gauntlet, standard_gauntlet
 from run_farm.protocols import HostSpec, LaunchSpec
 from run_farm.vast import VastLedger, VastProvider
 
@@ -76,6 +75,7 @@ def build_command(a, engine_commit):
         f"--N {a.N} --L {a.L} --C {a.C} --U 50 "
         f"--alpha {a.alpha} --beta 2e-3 --cramp 8000 --agrad wrapped "
         f"--ic screened --steps {a.steps} --samples {a.samples} "
+        f"--topo-every {a.topo_every} "
         f"--save-every {a.save_every} --out {out} "
         f"; echo \"exit=$?\" > {out}/DONE)")
 
@@ -146,7 +146,21 @@ def main():
     ap.add_argument("--steps", type=int, default=12000)
     ap.add_argument("--samples", type=int, default=24)
     ap.add_argument("--save-every", type=int, default=3000,
-                    help="checkpoints; the field is the deliverable")
+                    help="checkpoints; the field is the deliverable. All writes go "
+                         "to ONE field.npz (~3.7 GB at N=320), so this bounds how "
+                         "much progress a timeout costs, not disk.")
+    ap.add_argument("--topo-every", type=int, default=1,
+                    help="record Lk(phi1,phi2) + per-species segment counts every "
+                         "Kth sample. The ENGINE defaults this to 0 = off, which "
+                         "would have made this rental produce energy and Q only -- "
+                         "and the trajectory IS the deliverable: the question is "
+                         "whether the phi1 self-knot survives, and a single "
+                         "end-of-run diagnostic cannot say WHEN it stopped. K=1 "
+                         "gives 500-step resolution at --steps 12000 --samples 24, "
+                         "finer than the 1200-step local run whose reconnection "
+                         "showed no energy signature. Costs a host-side skeleton "
+                         "extraction per sample; failures are caught per-sample and "
+                         "the checkpoint protects the run regardless.")
     ap.add_argument("--gpu", default="A100_SXM4",
                     help="N=320 needs an A100-class card. A 24 GB RTX_4090 was "
                          "tried and OOMed 0.92 s in, before one relaxation step: "
@@ -154,6 +168,12 @@ def main():
                          "far more than the 3.4 GB the state alone suggests. "
                          "examples/ehn_knot_soliton.py said A100-class; it was right.")
     ap.add_argument("--max-dph", type=float, default=0.60)
+    ap.add_argument("--cap-usd", type=float, default=3.00,
+                    help="ENFORCED ceiling on booked + in-flight spend for this "
+                         "ledger, re-checked before every rent(). Distinct from "
+                         "--max-dph, which caps the hourly RATE and therefore "
+                         "cannot bound a total: a rate cap says nothing about how "
+                         "many hosts get acquired.")
     ap.add_argument("--run-timeout", type=int, default=9000)
     ap.add_argument("--ready-timeout", type=int, default=2400)
     ap.add_argument("--out", default="output/ehn_box")
@@ -183,8 +203,22 @@ def main():
           f"-> {'INSIDE' if elmag < 147 else 'EXPELLED'}")
     print(f"  engine commit {commit[:8]}   steps {a.steps} "
           f"(= {int(a.steps * a.alpha / 4e-4)} at EHN's alpha=4e-4)")
-    print(f"  COST BOUND: {a.run_timeout/3600:.2f} hr x ${a.max_dph}/hr = "
-          f"${a.run_timeout/3600*a.max_dph:.2f} worst case")
+    # Cost as a quantity rather than a print. `hours x rate` omitted the tax that
+    # has actually been paid on this leg: output/ehn_box_t25/vast_ledger.jsonl
+    # records instance 46643731 destroyed as host_failed, "worker not ready within
+    # 2400s", 2753 billed seconds, $0.2238 -- for a box that never came up. You are
+    # billed for the whole --ready-timeout while a host fails to provision, so the
+    # acquisition tax on a scarce tier is set by that timeout, not by the tier being
+    # cheap. Hence 0.22 rather than budget.estimate's documented 0.02-0.05, and
+    # A100_SXM4 is scarcer than the RTX 4090 that produced the number.
+    #
+    # failure_tax stays 0.0 deliberately: it is a fraction of USEFUL gpu-hours, and
+    # this leg has never produced one, so there is no denominator to derive it from.
+    # Guessing a fraction here would dress an unknown up as a measurement.
+    est = estimate(1, a.run_timeout, a.max_dph, acq_tax_usd=0.22, failure_tax=0.0)
+    print(f"  COST: ${est['usd']:.2f} worst case = {est['gpu_h']:.2f} gpu-h at the "
+          f"{a.run_timeout/3600:.2f} hr timeout x ${a.max_dph}/hr "
+          f"+ $0.22 measured acquisition tax")
 
     leg = FleetLeg(label=label, command=build_command(a, commit),
                    ship=(), fetch="out_ehn_box",
@@ -224,6 +258,15 @@ def main():
     # Everything that can fail for $0. PayloadClosed is deliberately absent: this
     # leg ships nothing (the box pip-installs both repos from main), so there is no
     # flat payload to close over -- and a check that cannot fail is not a check.
+    #
+    # Recorded while wiring this up: of the two repos the box installs, only
+    # jax-solitons is REACHED. `grep -rn soliton_playground` over the engine's src/
+    # is empty, and importing jax_solitons.ehn.relax pulls in no soliton_playground
+    # module, so PIP_LAB is installed and never imported. Left in place rather than
+    # removed -- dropping an install that both prior attempts carried is a change to
+    # the remote environment, and this run is not the place to test it -- but it
+    # bounds what unpushed_blockers() is actually protecting: the ENGINE commit is
+    # what reaches the computation, and this driver never does.
     print()
     try:
         # ssh-key-registered is SKIPPED, not deleted, and the reason is on record:
@@ -234,19 +277,58 @@ def main():
         # SHA256:qFr198sjtIHGozOic8WPZ2RJSoNrbbzWXtvFYQSoltg, matching
         # `ssh-keygen -lf ~/.ssh/vastai.pub`. That is the same statement the check
         # wanted to make; it just could not make it through this provider.
-        require_gauntlet([
-            SshKeyPresent(),
-            SshKeyRegistered(provider),
-            ProviderCapable(provider),
-            OffersAvailable(provider, spec),
-            OutDirWritable(outdir),
-            ResumeMarkersIntended([leg], outdir),
-        ], skip=("ssh-key-registered",))
+        #
+        # The list is now `standard_gauntlet`'s rather than hand-rolled, for three
+        # reasons the hand-rolled version got wrong:
+        #
+        #   1. ProviderCapable(provider) passed NO method names, so `required`
+        #      defaulted to () and the check reported "has all 0 required method(s)"
+        #      -- it could not fail. That is the same defect this file's comment
+        #      calls out one line above about PayloadClosed, committed one line
+        #      below it. standard_gauntlet supplies offers/rent/destroy as required
+        #      and dead_reason/logs/list_instances as optional.
+        #   2. Order. The assembly is cheapest-first by design: local and free
+        #      before anything touching the network. The hand-rolled list ran
+        #      SshKeyRegistered and OffersAvailable -- two API round trips -- ahead
+        #      of OutDirWritable, which fails in milliseconds.
+        #   3. payload=None omits PayloadClosed for us, so the reason it is absent
+        #      lives in the assembly's contract instead of depending on whoever
+        #      edits this list next remembering why.
+        #
+        # skip= goes to require_gauntlet, NOT to standard_gauntlet, and the
+        # difference matters: standard_gauntlet's skip filters the check out of the
+        # list, so it vanishes from the report and reads exactly like one that
+        # passed. require_gauntlet's skip (run-farm d4682bd) emits it as SKIPPED
+        # with "a skip proves only that someone chose to accept this risk
+        # out-of-band". A bypass should appear in the report as a bypass.
+        require_gauntlet(
+            standard_gauntlet(provider=provider, host_spec=spec, out_dir=outdir,
+                              legs=[leg], payload=None),
+            skip=("ssh-key-registered",))
     except GauntletError:
         print("\nGAUNTLET FAILED — nothing rented, nothing spent.")
         return 6
 
-    ex = FleetExecutor(provider, launch, local_out_dir=str(outdir),
+    # ---- the cap, at the one seam money starts: rent() -------------------------
+    # --max-dph caps the RATE; it cannot bound a TOTAL, because nothing in a rate
+    # says how many hosts get acquired -- and the failover path acquires another
+    # host on RentUnavailable or HostProbeFailed. CappedProvider counts booked
+    # spend (teardown costs from the ledger) PLUS in-flight burn (open rentals at
+    # dph x elapsed, which ledger.summary() alone does not see) and raises
+    # BudgetExceeded BEFORE calling the inner rent, so an over-cap attempt creates
+    # no host. It is itself a Provider, so this composes with no executor change:
+    # FleetExecutor touches only provider.offers and provider.rent, both of which
+    # the wrapper implements. The gauntlet above deliberately ran against the RAW
+    # adapter, since destroy() -- the teardown surface -- lives there.
+    #
+    # The guarantee is a pre-rent gate, not a mid-rental tripwire: one box can
+    # still overshoot by its own runtime, which --run-timeout bounds.
+    capped = CappedProvider(provider, cap_usd=a.cap_usd, ledger=ledger)
+    print(f"  cap ${a.cap_usd:.2f}, already spent on this ledger "
+          f"${capped.spent_usd():.4f} -> ${a.cap_usd - capped.spent_usd():.2f} "
+          f"of headroom")
+
+    ex = FleetExecutor(capped, launch, local_out_dir=str(outdir),
                        host_spec=spec, ready=SentinelReady(),
                        ready_timeout=a.ready_timeout, run_timeout=a.run_timeout,
                        ledger=ledger, max_parallel=1)
@@ -254,9 +336,19 @@ def main():
     # non-empty list, so a RUN_FAIL / BAD_ARTIFACTS leg would have exited 0 --
     # a failure reading as success, which is the exact class of bug LegResult's
     # own docstring says BAD_ARTIFACTS was split out to prevent.
-    results = ex.run([leg])
+    reap = f"python -m run_farm.reap --ledger {outdir/'vast_ledger.jsonl'} --yes"
+    try:
+        results = ex.run([leg])
+    except BudgetExceeded as e:
+        # A deliberate stop, not a bad host: it must halt rather than fail over to
+        # the next offer, so it is caught here instead of inside the failover path.
+        print(f"\nBUDGET CAP — refused before creating a host: {e}")
+        print(f"  a host rented EARLIER in this run may still be live: {reap}")
+        return 7
+
     if not results:
         print("  NO LEGS RAN — treat as failure, not as success")
+        print(f"  check for a live box first: {reap}")
         return 1
 
     bad = False
@@ -273,6 +365,13 @@ def main():
         if verdict != "OK":
             print(f"    artifacts are in {outdir/leg.label}; the relaxation did NOT "
                   f"complete, so any manifest there is a partial record")
+    if bad:
+        # rent()'s teardown-verify only covers the exit paths it can intercept. A
+        # SIGKILL, a crash, or a destroy REST call that itself fails on a flaky
+        # resolver all leave a GPU billing by the second, and this driver is meant
+        # to be run detached. --ledger scope touches only boxes THIS ledger rented
+        # and never recorded destroyed, so it is safe while other sessions farm.
+        print(f"\n  verify nothing is still billing: {reap}")
     return 1 if bad else 0
 
 
