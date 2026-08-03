@@ -53,6 +53,37 @@ theory died; the engine, the calorimeter, and the event graph were worth keeping
 
 ```bash
 git clone https://github.com/JimGalasyn/jax-solitons ../jax-solitons
+git clone https://github.com/JimGalasyn/run-farm     ../run-farm
 pip install -e ../jax-solitons
+pip install -e ../run-farm          # NOT optional -- see below
 pip install -e .
 ```
+
+**`run-farm` must be installed from the sibling checkout, not left to resolve.**
+Omitting that line does not fail: `jax-solitons` declares `run-farm>=0.1.1` as a plain
+specifier (PyPI forbids direct references in published metadata), so pip quietly
+installs the **published** run-farm from PyPI and everything appears fine — until
+`experiments/run_ehn_box_vast.py` dies at leg construction with
+
+```
+TypeError: FleetLeg.__init__() got an unexpected keyword argument 'reattachable'
+```
+
+**The version number cannot tell you why.** PyPI's run-farm and this workspace's
+checkout both report `0.2.0`; the checkout is ten commits past the `v0.2.0` tag with the
+version string unchanged, and `reattachable` is in those ten. So `pip list` shows the
+expected version while the driver is broken. Check the install PATH, not the version:
+
+```bash
+pip list | grep run-farm     # want a /home/.../run-farm path, not a bare version
+```
+
+The same applies to `jax-solitons`: the rented box `pip install`s both repos from
+GitHub `main`, so the engine that runs is main's, while `ENGINE_COMMIT` in the manifest
+is resolved from the *local* checkout. A local clone that is merely behind records a
+commit that is not the code that ran.
+
+Found on 2026-08-03 by an intake that had no venv here and borrowed a sibling
+interpreter plus `PYTHONPATH=src` to run the driver at all — the setup above is what
+makes a clean checkout reproducible. (`pyproject.toml`'s `pythonpath = ["src"]` already
+covers `pytest`, which is why the suite passed while the driver did not.)
