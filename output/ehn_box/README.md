@@ -12,6 +12,7 @@ kept without its field.
 
 | | |
 |---|---|
+| launched with | `--max-dph 0.65` — **not the default 0.60**, see below |
 | host | A100 SXM4, Alberta CA, reliability 0.9948, **$0.6152/hr** |
 | instance | 46720095, provisioned in **127.3 s** |
 | billed | 2468.6 s = **$0.4218**, destroyed, `verify: gone` |
@@ -102,3 +103,10 @@ gauntlet 6/6 with `ssh-key-registered` reported as SKIPPED, cap `$3.00` against 
 earlier attempt outright — the only A100_SXM4 on the market was $0.615 against a
 `--max-dph` of 0.60 — so that attempt rented nothing. `--max-dph 0.65` was passed on
 the command line for this run; the default is unchanged.
+
+**Re-running from the committed defaults will not reproduce this offer pool.** The
+ledger's `dph = 0.6152` is above the default `--max-dph 0.60`, and vast filters
+offers on `dph_total <= max_dph`, so the defaults draw a smaller — at the time,
+empty — A100_SXM4 pool. This paragraph is the only record of that for THIS run;
+later runs write the resolved flags to `launch.json` beside the ledger, so the
+launch parameters stop depending on someone remembering to write a sentence.

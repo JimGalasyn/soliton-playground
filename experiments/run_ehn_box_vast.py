@@ -39,8 +39,10 @@ theirs, and step counts are NOT comparable to the paper without that factor.
   python run_ehn_box_vast.py --tq 5 --R 64 --steps 12000
 """
 import argparse
+import json
 import subprocess
 import sys
+import time
 from pathlib import Path
 
 from run_farm.budget import BudgetExceeded, CappedProvider, estimate
@@ -431,6 +433,31 @@ def main():
     except GauntletError:
         print("\nGAUNTLET FAILED — nothing rented, nothing spent.")
         return 6
+
+    # ---- what was actually launched, recorded before anything is rented ---------
+    # Review catch, 2026-08-03: the committed run record for the failed N=320 attempt
+    # shows a ledger dph of 0.6152 against a driver default --max-dph of 0.60, and
+    # vast.py filters offers on `dph_total <= max_dph`. So that run cannot have used
+    # the committed defaults -- it was launched with --max-dph 0.65 -- and anyone
+    # re-running from the defaults draws a SMALLER, possibly empty, A100_SXM4 pool
+    # than the one that produced the record. (The README did say so in prose; the
+    # reviewer read the record and not the prose, which is the point: a launch
+    # parameter recorded only in a sentence someone remembered to write is recorded
+    # by luck.)
+    #
+    # So the resolved flags go next to the ledger, automatically, every run -- and
+    # BEFORE the rental, because a run that dies is exactly when you need to know
+    # what it was asked to do.
+    launch_record = {"utc": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
+                     "engine_commit": commit,
+                     "lab_commit": subprocess.run(
+                         ["git", "rev-parse", "HEAD"], cwd=str(REPO),
+                         capture_output=True, text=True).stdout.strip(),
+                     "argv": sys.argv[1:],
+                     "flags": vars(a),
+                     "remote_command": leg.command}
+    (outdir / "launch.json").write_text(json.dumps(launch_record, indent=1))
+    print(f"  launch record -> {outdir/'launch.json'}")
 
     # ---- the cap, at the one seam money starts: rent() -------------------------
     # --max-dph caps the RATE; it cannot bound a TOTAL, because nothing in a rate
