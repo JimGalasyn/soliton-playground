@@ -1,0 +1,3 @@
+{"dph": 0.6151851851851853, "event": "rented", "geo": "Alberta, CA", "gpu": "A100 SXM4", "instance_id": 46720095, "offer_id": "39185351", "provider": "vast", "reliability": 0.9948215, "ts": 1785778033.01}
+{"event": "running", "instance_id": 46720095, "offer_id": "39185351", "provider": "vast", "provision_s": 127.3, "ts": 1785778159.611}
+{"billed_s": 2468.6, "destroyed": true, "est_cost_usd": 0.4218, "event": "destroyed", "instance_id": 46720095, "offer_id": "39185351", "outcome": "ok", "provider": "vast", "reason": "", "ts": 1785780501.946, "verify": "gone"}
