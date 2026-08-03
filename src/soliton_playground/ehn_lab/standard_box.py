@@ -47,9 +47,11 @@ archived reference runs cited next to each):
                       the off-nudge; the guard rebuilds a small IC and
                       demands the tracer reads the seeded Lk).
   B6 stability margin B2 trajectory: no NaN, post-ramp E monotone; then
-                      resumes at 2x and 4x alpha, PASSING at >=2x. The 4x
-                      (EHN's own 4e-4) is a recorded hypothesis, not a
-                      requirement -- and it is now measured FALSE: see below.
+                      resumes at 2x, 2.5x and 4x alpha, PASSING at >=2x. The 4x
+                      (EHN's own 4e-4) was a recorded hypothesis, not a
+                      requirement -- and is now measured FALSE: see below. 2.5x
+                      is probed so measured_headroom can express the 2x-2.5x
+                      resolution instead of quantising to {0, 2, 4}.
   B7 map fidelity     (conditional, --with-m1) M1 magnification phi(x) ->
                       phi(x/s): per-realization Lk + component count
                       preserved; lost-loop fraction receipted.
@@ -60,8 +62,9 @@ Reference calibration (archived runs, this engine, N=192):
                         charges dead)                    [out_trefoil_t23_n192*]
   36k hold: 978 skeleton segments bit-stable 12k->36k (zero shrink).
 
-Alpha headroom, MEASURED 2026-08-02 (200 steps from a settled trefoil, N=192
-dx=0.8 lam=1000) -- B6's "spec_hypothesis_4x" resolves to FALSE:
+Alpha headroom, MEASURED 2026-08-02 -- B6's "spec_hypothesis_4x" resolves FALSE.
+Offline sweep, 200 STEPS from a settled trefoil (N=192 dx=0.8 lam=1000); B6's own
+probes run 500, which matters for the marginal row and only that row:
   2.00e-4 (2x)    E=3333.3 Lk=-3.0   survives
   2.05e-4         E=3334.3 Lk=-3.0   survives
   2.50e-4 (2.5x)  E=3332.1 Lk=-3.0   survives, MARGINAL
@@ -73,10 +76,21 @@ the leg's own comment predicted, 2/(8*lam) = 2.5e-4 -- 2.5e-4 surviving is the
 marginal case (|1-alpha*H| = 1), not a refutation. This is the rider-1
 correction the leg was written to trigger.
 
-NOTE for any refinement below dx ~ 0.1: 8*lam is the potential-dominated
-plateau only. The Hessian grows as 1/dx^2 once the gradient and gauge (U/dx^2)
-terms take over, so the cliff MOVES -- 1.30e-4 at dx=0.1, 3.27e-5 at dx=0.05.
-Nothing in this box refines that far, but a successor might; see
+The 2.5x row is the ONLY one whose verdict can depend on the horizon: at
+alpha = 2/H exactly, |1-alpha*H| = 1 is neutral growth, so it neither decays nor
+explodes and 200 steps does not settle it. The 2x and 4x rows are decaying and
+exploding respectively and are horizon-insensitive. B6 therefore probes 2.5x
+directly at its own 500 steps rather than inheriting this number -- if a
+certificate reports measured_headroom 2.0 where this table says 2.5, the
+certificate is right and the difference IS the horizon effect.
+
+NOTE for any refinement below dx ~ 0.14: 8*lam is the potential-dominated
+plateau only. The Hessian grows as 1/dx^2 once the gradient and gauge terms take
+over -- H ~ max(8*lam, 153/dx^2), the branches crossing at dx = 0.14 rather than
+the 0.11 an analytic 2U/dx^2 = 8*lam predicts, since the measured coefficient is
+153 and not 2U = 100. So the cliff MOVES: 1.30e-4 at dx=0.1, 3.27e-5 at dx=0.05,
+and SB-1's own alpha=1e-4 would be unsafe below dx = 0.088. SB-1 is fixed at
+dx=0.8 and nothing here refines, but a successor box might; see
 jax_solitons.ehn.relax's module docstring for the table.
 
   python -m soliton_playground.ehn_lab.standard_box --battery --quick   # N=96 smoke
@@ -547,12 +561,25 @@ def leg_B2_B3_B4_B6(outroot, box, steps, headroom_steps):
         if not smoke:
             res["B4_charge_retention"] = b4
 
-        # B6: monotone post-ramp + MEASURED alpha headroom. Probe 2x and 4x
-        # from the relaxed state; criterion = survives >=2x (not at the
+        # B6: monotone post-ramp + MEASURED alpha headroom. Probe 2x, 2.5x and
+        # 4x from the relaxed state; criterion = survives >=2x (not at the
         # cliff); the measured factor goes in the certificate. Gradient-
         # descent stability predicts the cliff near 2/(8*lam) = 2.5e-4 at
-        # lam=1000, so the spec's ">=4x" is a hypothesis this leg MEASURES
-        # (rider-1 correction candidate if 4x fails at SB-1 scale).
+        # lam=1000.
+        #
+        # RESOLVED FALSE 2026-08-02 -- the spec's ">=4x" was the hypothesis this
+        # leg was built to measure, and 4x diverges at SB-1 scale (E=7.2e8 at 3x,
+        # NaN at 4x). The rider-1 correction is filed in this module's header
+        # with the full table; read it before re-opening the question.
+        #
+        # 2.5x IS PROBED, not just bracketed, because the header claims a
+        # resolution of 2x-2.5x and a (2.0, 4.0) tuple can only ever emit
+        # measured_headroom in {0.0, 2.0, 4.0} -- so every certificate would
+        # read 2.0 and fail to corroborate the header it is supposed to
+        # evidence. 2.5x is also the one probe whose outcome is horizon-
+        # dependent by construction: at alpha = 2/H exactly, |1-alpha*H| = 1 is
+        # NEUTRAL growth, so it may survive the 200-step offline sweep and fail
+        # this leg's 500. That is a real measurement, not an inconsistency.
         mono, why = _monotone_post_ramp(man, BANDS["e_uptick_rel"])
         fld = outroot / "B2_trefoil_neg" / "field.npz"
         total = steps + headroom_steps
@@ -561,7 +588,7 @@ def leg_B2_B3_B4_B6(outroot, box, steps, headroom_steps):
         nsamp = max(4, total // max(1, headroom_steps // 4))
         headroom = 0.0
         probes = {}
-        for mult in (2.0, 4.0):
+        for mult in (2.0, 2.5, 4.0):
             out = outroot / f"B6_headroom_{mult:g}x"
             ok = _run_leg(f"B6_{mult:g}x", _relax_cmd(
                 out, geom_args=[], steps=total, samples=nsamp,
