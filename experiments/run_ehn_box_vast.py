@@ -76,6 +76,7 @@ def build_command(a, engine_commit):
         f"--alpha {a.alpha} --beta 2e-3 --cramp 8000 --agrad wrapped "
         f"--ic screened --steps {a.steps} --samples {a.samples} "
         f"--topo-every {a.topo_every} "
+        f"--det-every {a.det_every} --det-timeout {a.det_timeout} "
         f"--save-every {a.save_every} --out {out} "
         f"; echo \"exit=$?\" > {out}/DONE)")
 
@@ -161,6 +162,18 @@ def main():
                          "showed no energy signature. Costs a host-side skeleton "
                          "extraction per sample; failures are caught per-sample and "
                          "the checkpoint protects the run regardless.")
+    ap.add_argument("--det-every", type=int, default=1,
+                    help="phi1 SELF-KNOT determinant every Kth sample, computed ON "
+                         "THE BOX into the manifest (jax-solitons 9a449fc). This is "
+                         "the measurement that decides the run, and it is here "
+                         "rather than computed locally from field.npz because on "
+                         "2026-08-03 that field truncated 3.7 GB -> 2.1 GB crossing "
+                         "a vast SSH proxy and took the whole deliverable with it. "
+                         "Costs ~22 s/sample at N=320, ~9 min over 24 samples.")
+    ap.add_argument("--det-timeout", type=float, default=180.0,
+                    help="per-determinant wall-clock budget on the box. identify_knot "
+                         "can grind for hours on a noisy evolved curve; on timeout "
+                         "the sample records null and the descent continues.")
     ap.add_argument("--gpu", default="A100_SXM4",
                     help="N=320 needs an A100-class card. A 24 GB RTX_4090 was "
                          "tried and OOMed 0.92 s in, before one relaxation step: "
@@ -286,10 +299,19 @@ def main():
         # the vast adapter exposes no registered_ssh_keys(), so the check cannot
         # verify and correctly refuses to pass. Verified out-of-band instead of
         # waved through -- GET https://console.vast.ai/api/v0/ssh/ returns four
-        # keys, of which ids 961037 and 961053 have fingerprint
-        # SHA256:qFr198sjtIHGozOic8WPZ2RJSoNrbbzWXtvFYQSoltg, matching
-        # `ssh-keygen -lf ~/.ssh/vastai.pub`. That is the same statement the check
-        # wanted to make; it just could not make it through this provider.
+        # keys, of which id 1154757 has fingerprint
+        # SHA256:pFSw++WvyMjzJ+IJmv1lXulKpun4YJMT7mdQpJooSV4, matching
+        # `ssh-keygen -lf ~/.ssh/vastai.pub` (comment vastai-fleet-IBM-85CB6G4,
+        # ED25519). That is the same statement the check wanted to make; it just
+        # could not make it through this provider.
+        #
+        # RE-VERIFIED 2026-08-03, and the previous note was stale: it named ids
+        # 961037/961053 and fingerprint SHA256:qFr198sj..., which are a DIFFERENT
+        # key that is still on the account. The local key had been rotated, so the
+        # recorded evidence no longer described the key being skipped over. It
+        # happened to remain safe, which is the problem with a stale verification --
+        # it reads as checked. Re-run the GET above rather than trusting this line
+        # if ~/.ssh/vastai changes again.
         #
         # The list is now `standard_gauntlet`'s rather than hand-rolled, for three
         # reasons the hand-rolled version got wrong:
