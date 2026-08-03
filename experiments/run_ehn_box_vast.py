@@ -206,19 +206,32 @@ def main():
     # Cost as a quantity rather than a print. `hours x rate` omitted the tax that
     # has actually been paid on this leg: output/ehn_box_t25/vast_ledger.jsonl
     # records instance 46643731 destroyed as host_failed, "worker not ready within
-    # 2400s", 2753 billed seconds, $0.2238 -- for a box that never came up. You are
-    # billed for the whole --ready-timeout while a host fails to provision, so the
-    # acquisition tax on a scarce tier is set by that timeout, not by the tier being
-    # cheap. Hence 0.22 rather than budget.estimate's documented 0.02-0.05, and
-    # A100_SXM4 is scarcer than the RTX 4090 that produced the number.
+    # 2400s", 2753 billed seconds, $0.2238 -- for a box that never came up.
+    #
+    # Vast bills WALL-CLOCK from `rented` to `destroyed` x dph, and the ledger says
+    # so to four decimals on both of its records:
+    #
+    #   2753.6 s x $0.29263/hr = $0.2238   (46643731, host_failed)
+    #    311.9 s x $0.33472/hr = $0.0290   (46646833, ok)
+    #
+    # So a failed acquisition costs the whole --ready-timeout, and the tax is set by
+    # that timeout rather than by the tier being cheap. But that also makes it a
+    # RATE, not a constant -- and $0.22 was measured on an RTX 4090 at $0.293/hr,
+    # while this leg rents A100_SXM4 at up to $0.60/hr. Hard-coding 0.22 here
+    # under-stated the tax by ~2x on the very tier it was about to be spent on, and
+    # A100_SXM4 being scarcer argues the failure RATE is higher too, not lower.
+    # Computed, so it tracks whatever --ready-timeout and --max-dph actually select.
     #
     # failure_tax stays 0.0 deliberately: it is a fraction of USEFUL gpu-hours, and
     # this leg has never produced one, so there is no denominator to derive it from.
     # Guessing a fraction here would dress an unknown up as a measurement.
-    est = estimate(1, a.run_timeout, a.max_dph, acq_tax_usd=0.22, failure_tax=0.0)
+    acq_tax = a.ready_timeout / 3600.0 * a.max_dph
+    est = estimate(1, a.run_timeout, a.max_dph, acq_tax_usd=acq_tax, failure_tax=0.0)
     print(f"  COST: ${est['usd']:.2f} worst case = {est['gpu_h']:.2f} gpu-h at the "
           f"{a.run_timeout/3600:.2f} hr timeout x ${a.max_dph}/hr "
-          f"+ $0.22 measured acquisition tax")
+          f"+ ${acq_tax:.2f} acquisition tax "
+          f"({a.ready_timeout/3600:.2f} hr ready-timeout x ${a.max_dph}/hr, "
+          f"one failed host)")
 
     leg = FleetLeg(label=label, command=build_command(a, commit),
                    ship=(), fetch="out_ehn_box",
@@ -342,6 +355,16 @@ def main():
     except BudgetExceeded as e:
         # A deliberate stop, not a bad host: it must halt rather than fail over to
         # the next offer, so it is caught here instead of inside the failover path.
+        #
+        # This clause was UNREACHABLE as first written, and the exit code with it.
+        # `BudgetExceeded` lived in run_farm.budget, unknown to run_farm.fleet, so
+        # FleetExecutor's catch-all swallowed it into LegResult(status="ERROR") --
+        # the cap still worked, but it reported as an ordinary host failure and the
+        # campaign carried on to attempt a rent per remaining leg. Fixed in run-farm
+        # c08c712: the exception moved to run_farm.protocols beside the other
+        # provider-raised signals, fleet re-raises it, and unstarted legs are
+        # cancelled. REQUIRES run-farm >= c08c712; against an older run-farm this
+        # path goes quiet again rather than misfiring.
         print(f"\nBUDGET CAP — refused before creating a host: {e}")
         print(f"  a host rented EARLIER in this run may still be live: {reap}")
         return 7
