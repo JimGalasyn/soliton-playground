@@ -1,0 +1,43 @@
+{
+ "utc": "2026-08-03T23:09:20Z",
+ "engine_commit": "842ce612097056482531523bdd0e67191ced9e5e",
+ "lab_commit": "88386da75c1c8a3e475eb936aab3cd5cadeb291b",
+ "argv": [
+  "--steps",
+  "36000",
+  "--samples",
+  "72",
+  "--run-timeout",
+  "13000",
+  "--cap-usd",
+  "4.50",
+  "--max-dph",
+  "0.65",
+  "--out",
+  "output/ehn_box_36k"
+ ],
+ "flags": {
+  "tp": 2,
+  "tq": 5,
+  "R": 64.0,
+  "N": 320,
+  "L": 256.0,
+  "C": 400.0,
+  "alpha": 0.0001,
+  "steps": 36000,
+  "samples": 72,
+  "save_every": 3000,
+  "topo_every": 1,
+  "det_every": 1,
+  "det_timeout": 180.0,
+  "gpu": "A100_SXM4",
+  "max_dph": 0.65,
+  "cap_usd": 4.5,
+  "run_timeout": 13000,
+  "ready_timeout": 2400,
+  "out": "output/ehn_box_36k",
+  "dry_run": false,
+  "force_envelope": false
+ },
+ "remote_command": "cd /workspace && mkdir -p out_ehn_box && export ENGINE_COMMIT=842ce612097056482531523bdd0e67191ced9e5e && /workspace/jaxenv/bin/pip install -q 'git+https://github.com/JimGalasyn/jax-solitons' 'git+https://github.com/JimGalasyn/soliton-playground' && cat > leg.sh <<'EOSCRIPT'\nset -u\nOUT=out_ehn_box\nPY=/workspace/jaxenv/bin/python\nBOOT=$(cat /proc/sys/kernel/random/boot_id)\nif [ -f \"$OUT/DONE\" ]; then echo \"already complete: $(cat $OUT/DONE)\"; exit 0; fi\nRUNNING=no\nif [ -s \"$OUT/PID\" ]; then\n  read -r PBOOT PPID_ < \"$OUT/PID\" || true\n  if [ \"$PBOOT\" = \"$BOOT\" ] && kill -0 \"$PPID_\" 2>/dev/null; then RUNNING=yes; fi\nfi\nif [ \"$RUNNING\" = yes ]; then\n  echo \"REATTACHED to live pid $PPID_ on this box; not relaunching\"\nelse\n  RESUME=\"\"\n  if [ -f \"$OUT/field.npz\" ]; then\n    if \"$PY\" -c \"import zipfile; zipfile.ZipFile('$OUT/field.npz').namelist()\" 2>/dev/null; then\n      RESUME=\"--resume $OUT/field.npz\"; echo \"RESUMING from $OUT/field.npz\"\n    else\n      echo \"DISCARDING $OUT/field.npz: not a readable zip (torn restore)\"\n      rm -f \"$OUT/field.npz\"\n    fi\n  fi\n  setsid nohup bash -c \"$PY -m jax_solitons.ehn.relax --geom torus --tp 2 --tq 5 --R 64.0 --N 320 --L 256.0 --C 400.0 --U 50 --alpha 0.0001 --beta 2e-3 --cramp 8000 --agrad wrapped --ic screened --steps 36000 --samples 72 --topo-every 1 --det-every 1 --det-timeout 180.0 --save-every 3000 --out out_ehn_box $RESUME ; echo \\\"exit=\\$?\\\" > $OUT/DONE\" > \"$OUT/run.log\" 2>&1 < /dev/null &\n  echo \"$BOOT $!\" > \"$OUT/PID\"\n  echo \"LAUNCHED detached: $(cat $OUT/PID)\"\nfi\nwhile [ ! -f \"$OUT/DONE\" ]; do\n  read -r PBOOT PPID_ < \"$OUT/PID\" || true\n  if ! kill -0 \"$PPID_\" 2>/dev/null; then\n    sleep 5\n    if [ ! -f \"$OUT/DONE\" ]; then\n      echo \"payload pid $PPID_ vanished with no DONE marker\"; exit 1\n    fi\n  fi\n  sleep 15\ndone\necho \"marker: $(cat $OUT/DONE)\"\nEOSCRIPT\nbash leg.sh"
+}
