@@ -112,7 +112,17 @@ def build_command(a, engine_commit):
     return (
         f"cd /workspace && mkdir -p {out} && "
         f"export ENGINE_COMMIT={engine_commit} && "
-        f"/workspace/jaxenv/bin/pip install -q '{PIP_ENGINE}' '{PIP_LAB}' && "
+        # pyknotid is listed EXPLICITLY rather than via jax-solitons' `knots` extra.
+        # It is optional upstream for a good reason -- tracing curves needs only
+        # numpy/scipy, only the Alexander determinant needs pyknotid -- and this leg
+        # is precisely the caller that needs it. Naming it here means the dependency
+        # of THIS run is legible in the command the manifest records, instead of
+        # hiding behind extras resolution.
+        #
+        # Its absence cost the 2026-08-03 rental its entire measurement: 73 samples
+        # of `det1 = [[2352, 'e:ImportError']]`, $1.50, and a leg that reported OK.
+        f"/workspace/jaxenv/bin/pip install -q '{PIP_ENGINE}' '{PIP_LAB}' "
+        f"'pyknotid>=0.5' && "
         f"cat > leg.sh <<'EOSCRIPT'\n"
         f"set -u\n"
         f"OUT={out}\n"
@@ -127,6 +137,29 @@ def build_command(a, engine_commit):
         f'if [ "$RUNNING" = yes ]; then\n'
         f'  echo "REATTACHED to live pid $PPID_ on this box; not relaunching"\n'
         f'else\n'
+        # ---- on-box preflight, on the LAUNCH path only ---------------------------
+        # The gauntlet checks the local launch environment exhaustively; nothing
+        # checked whether the REMOTE box can perform the thing we are renting it for.
+        # Identifies a known T(2,3) and requires det == 3, so it exercises the whole
+        # path -- pyknotid import, the numpy-alias shim, the Alexander routine -- and
+        # not merely that a module resolves. Under a second, and it runs BEFORE the
+        # relaxation: it turns 2.7 h and $1.50 of non-measurement into an early exit.
+        #
+        # Here rather than at the top of the script, because a reattach has already
+        # been validated by the launch that preceded it, and an already-complete leg
+        # has nothing left to validate. `exit=90` goes into DONE so the marker
+        # distinguishes this from a relaxation that failed: the fleet reads it and
+        # reports FETCHED BUT FAILED rather than a bare nonzero.
+        f'  if ! "$PY" -c "from jax_solitons.knots import identify_knot, torus_knot; '
+        f'assert identify_knot(torus_knot(2, 3))[\'determinant\'] == 3" '
+        f'> "$OUT/preflight.log" 2>&1; then\n'
+        f'    echo "PREFLIGHT FAILED — this box cannot identify knots, so the run '
+        f'would relax for hours and record no determinant. Nothing launched."\n'
+        f'    cat "$OUT/preflight.log"\n'
+        f'    echo "exit=90" > "$OUT/DONE"\n'
+        f'    exit 90\n'
+        f'  fi\n'
+        f'  echo "preflight OK: T(2,3) identifies as det 3 on this box"\n'
         f'  RESUME=""\n'
         f'  if [ -f "$OUT/field.npz" ]; then\n'
         # Structural check only (reads the zip central directory), which is exactly
