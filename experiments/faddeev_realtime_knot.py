@@ -77,6 +77,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import subprocess
 import sys
 import time
 from pathlib import Path
@@ -105,6 +106,7 @@ from jax_solitons.seeds import torus_knot_hopfion_cp1  # noqa: E402
 from jax_solitons.steppers import arrested_flow, kinetic_energy  # noqa: E402
 from jax_solitons.steppers.verlet import make_verlet_step  # noqa: E402
 from jax_solitons.topology import hopf_charge  # noqa: E402
+from soliton_playground import viz  # noqa: E402
 from soliton_playground.gpe_lab import (C_BLUE, C_GREEN, C_ORANGE,  # noqa: E402
                                         DARK_STYLE, characteristic_period)
 
@@ -151,6 +153,47 @@ def id_knot(n, grid, c4):
                 knot=knot_label_only(info.get("carrier"))), curves
 
 
+def draw_core_3d(ax, n_np, dx, c4, curves, *, volume_frac=0.004, sigma=1.0,
+                 elev=22.0, azim=-58.0, zoom=1.75):
+    """The core in 3D, as an energy-density isosurface, with the traced curves as
+    the fallback.
+
+    The isosurface is preferred because the curves CANNOT show the weave: each
+    ax.plot is its own Line3D artist and mplot3d depth-sorts whole artists, so a
+    knot drawn as lines never occludes itself and reads as a flat tangle from
+    every camera. viz.add_parts merges surface faces into one collection, which
+    is the only construction in matplotlib that crosses over and under correctly
+    (measured in tests/test_viz_depth.py).
+
+    Deliberately the SAME level rule as the animation, driven by the same flag, so
+    the still panel and the GIF show the same surface. They briefly did not: the
+    panel used 0.80 * max and rendered 168 faces of scatter while the frames
+    rendered a clean tube from the identical field.
+    """
+    part = None
+    try:
+        e = viz.faddeev_energy_density(n_np[0], n_np[1], n_np[2], dx, c4)
+        if sigma > 0:
+            e = viz.smooth_periodic(e, sigma)
+        part = viz.iso_parts(e, viz.volume_level(e, volume_frac), dx,
+                             (1.0, 1.0, 1.0, 1.0))
+        if part is not None:
+            faces, _ = part
+            part = (faces, viz.phase_facecolors(faces, n_np[0], n_np[1], dx))
+    except Exception as exc:                      # never lose the figure to viz
+        print(f"  (isosurface panel unavailable: {type(exc).__name__}: {exc})")
+    if part is not None:
+        center, half = viz.bbox_of([part])
+        # zoom>1 because this panel is one cell of a 2x3 gridspec: correctly
+        # fitted, mplot3d still left the knot in about a quarter of the cell.
+        viz.draw_scene(ax, [part], center, half, elev=elev, azim=azim, zoom=zoom)
+        return
+    ax.set_facecolor("black")
+    for c in curves[:6]:
+        ax.plot(c[:, 0], c[:, 1], c[:, 2], color=C_BLUE, lw=1.6)
+    ax.set_axis_off()
+
+
 def n_to_cp1(nn):
     """Lift a unit n-field back to a CP^1 spinor (gauge phase fixed to zero).
     n = Z^dag sigma Z inverts up to the U(1) phase, which the energy ignores."""
@@ -177,10 +220,46 @@ def main():
     ap.add_argument("--dt", type=float, default=1e-4)
     ap.add_argument("--steps", type=int, default=160000)
     ap.add_argument("--checkpoints", type=int, default=6)
+    # Field snapshots are decoupled from checkpoints because the two have
+    # different costs: a checkpoint runs --post-relax descent steps plus a knot
+    # trace (seconds to minutes), while a snapshot is one savez. Animation wants
+    # many snapshots and no more IDs than before. Default 0 keeps the old
+    # behaviour -- snapshots only at checkpoints -- because a snapshot is ~3*N^3
+    # float32 on disk and defaulting this to 60 would silently cost gigabytes.
+    ap.add_argument("--save-fields", type=int, default=0,
+                    help="number of field snapshots over the run (0 = only at "
+                         "checkpoints). Set this to animate the result.")
+    ap.add_argument("--animate", action="store_true",
+                    help="render a timelapse GIF from the saved fields when the "
+                         "run finishes; implies --save-fields 48 if unset")
+    ap.add_argument("--anim-fps", type=int, default=12)
+    # Keep this in step with viz.timelapse's own default; they were briefly out
+    # of sync and the experiment silently rendered a fragmented core.
+    ap.add_argument("--anim-volume-frac", type=float, default=0.004,
+                    help="isosurface encloses the hottest fraction of the box; "
+                         "held per-frame so the knot stays readable while the "
+                         "core spreads (see viz.volume_level)")
     ap.add_argument("--out", type=Path, default=Path("outputs/faddeev_rt2"))
     args = ap.parse_args()
+    if args.animate and args.save_fields == 0:
+        args.save_fields = 48
     args.out.mkdir(parents=True, exist_ok=True)
     (args.out / "fields").mkdir(exist_ok=True)
+
+    # Resolved flags beside the ledger, same convention as run_ehn_box_vast (see
+    # 48fa3d5), and written BEFORE the run: a run that dies is exactly when you
+    # need to know what it was asked to do. It is also what makes outputs/ safe to
+    # keep gitignored -- the artifacts can be regenerated from this file alone.
+    (args.out / "launch.json").write_text(json.dumps(
+        {"utc": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
+         "lab_commit": subprocess.run(
+             ["git", "rev-parse", "HEAD"],
+             cwd=str(Path(__file__).resolve().parents[1]),
+             capture_output=True, text=True).stdout.strip(),
+         "argv": sys.argv[1:],
+         "flags": {k: (str(v) if isinstance(v, Path) else v)
+                   for k, v in vars(args).items()}}, indent=1))
+    print(f"  launch record -> {args.out / 'launch.json'}", flush=True)
 
     grid = BoxGrid(N=args.N, L=args.L, dtype=jnp.float64)
     cp1 = faddeev_cp1_model(c4=args.c4)      # convergent frame, for descent
@@ -208,6 +287,10 @@ def main():
     n = n_from_state(z)
     q_relax, e_relax = float(hopf_charge(n, grid)), float(nmod.energy(n, grid))
     id_relax, curves = id_knot(n, grid, args.c4)
+    # Kept because real time overwrites n, and the figure's 3D panel is the
+    # RELAXED core. float32 on the host: ~3*N^3*4 bytes, and it never goes back
+    # to the device.
+    n_relax = np.asarray(n, np.float32)
     print(f"RELAX (CP1, {time.time()-t0:.0f}s) Q_H={q_relax:+.4f} "
           f"E={e_seed:.1f}->{e_relax:.1f} |projgrad|/dof={gnorm:.2e} "
           f"{'STALLED' if gnorm > 1e-3 else 'near-critical'} | {id_relax}",
@@ -230,6 +313,14 @@ def main():
     step_fn = make_verlet_step(nmod, grid, dt=args.dt)
     every = max(1, args.steps // 200)
     ck_at = {int(round(f * args.steps)) for f in np.linspace(0, 1, args.checkpoints)}
+    # Snapshots are a superset of checkpoints, so every ID still has the field it
+    # was computed from sitting beside it on disk.
+    save_at = set(ck_at)
+    if args.save_fields > 0:
+        save_at |= {int(round(f * args.steps))
+                    for f in np.linspace(0, 1, args.save_fields)}
+    print(f"real time: {args.steps} steps, {len(ck_at)} checkpoints (ID), "
+          f"{len(save_at)} field snapshots", flush=True)
     rows, ck = [], {}
     t0 = time.time()
     for i in range(args.steps + 1):
@@ -237,9 +328,15 @@ def main():
             e = float(nmod.energy(n, grid)); k = float(kinetic_energy(v, grid))
             rows.append(dict(step=i, t=i * args.dt, E=e, KE=k, H=e + k,
                              Q_H=float(hopf_charge(n, grid))))
-        if i in ck_at:
+        if i in save_at:
+            # Q_H measured HERE, not copied from the last sample row: snapshot
+            # steps need not land on sample steps, and a label on a frame should
+            # describe that frame.
             np.savez_compressed(args.out / "fields" / f"n_{i:08d}.npz",
-                                n=np.asarray(n, np.float32), t=i * args.dt)
+                                n=np.asarray(n, np.float32), t=i * args.dt,
+                                L=args.L, c4=args.c4,
+                                Q_H=float(hopf_charge(n, grid)))
+        if i in ck_at:
             rep = post_relax_id(n)
             ck[i] = dict(t=i * args.dt, **rep)
             print(f"  t={i*args.dt:8.3f} ({i:7d}) Q_H={rows[-1]['Q_H']:+.4f} "
@@ -329,12 +426,10 @@ def main():
     a.legend(frameon=False, fontsize=8)
 
     a = fig.add_subplot(gs[1, 0], projection="3d")
-    a.set_facecolor("black")
-    for c in curves[:6]:
-        a.plot(c[:, 0], c[:, 1], c[:, 2], color=C_BLUE, lw=1.6)
+    draw_core_3d(a, n_relax, grid.dx, args.c4, curves,
+                 volume_frac=args.anim_volume_frac)
     a.set_title(f"relaxed core: det {id_relax.get('determinant')}", fontsize=10,
                 color=C_ORANGE)
-    a.set_axis_off()
 
     a = fig.add_subplot(gs[1, 1:]); a.axis("off")
     card = (f"UNSCORED DEMO — protocol DRAFT\n\nT({args.p},{args.q}) m={args.m}   "
@@ -361,6 +456,21 @@ def main():
     fig.savefig(args.out / "faddeev_realtime.png", dpi=110, bbox_inches="tight")
     print(f"\nVERDICT: {verdict}\n  settled {dets_s}  raw {dets_r}  "
           f"dH/H {(H1-H0)/H0:+.3e}")
+
+    # ---- animation, from the snapshots already on disk. Deliberately last and
+    # in its own try: the run's verdict and figure are the product, and a
+    # rendering failure must not cost hours of GPU time.
+    if args.animate:
+        fields = sorted((args.out / "fields").glob("n_*.npz"))
+        print(f"\nanimating {len(fields)} snapshots (CPU; the GPU is free now)")
+        try:
+            viz.timelapse(fields, args.out / "faddeev_realtime.gif",
+                          volume_frac=args.anim_volume_frac, fps=args.anim_fps,
+                          L=args.L, c4=args.c4)
+        except Exception as exc:
+            print(f"  animation failed ({type(exc).__name__}: {exc}); the "
+                  f"snapshots are in {args.out/'fields'} and "
+                  f"`python -m soliton_playground.viz timelapse` can retry")
 
 
 if __name__ == "__main__":

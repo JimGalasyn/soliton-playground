@@ -33,6 +33,54 @@ theory died; the engine, the calorimeter, and the event graph were worth keeping
   the hopfion wing.
 - **Invariants & tracking** — `jax_solitons.invariants` / `topology`: curve
   tracing, linking numbers, Hopf charge.
+- **Renderer** — `soliton_playground.viz`: frame-by-frame 3D isosurfaces and
+  animated GIFs, for the real-time legs where the answer is a movie rather than a
+  number. CPU-only by design (numpy / matplotlib / scikit-image / scipy / Pillow,
+  **no jax**), so rendering a finished run never contends for VRAM with one that
+  is still going.
+
+  ```bash
+  # animate a run's saved snapshots (frames land beside the GIF, for re-cutting)
+  python -m soliton_playground.viz timelapse --fields outputs/<run>/fields \
+      --out outputs/<run>/anim.gif --L 51.2 --c4 4.0 --spin 4
+  # or sweep the camera around one static field
+  python -m soliton_playground.viz turntable --field <field>.npz --out tt.gif
+  ```
+
+  Three `--mode`s: `surface` (smoothed isosurface), `facets` (unsmoothed — the
+  grid facets are left in, the upstream's "no cheat" stance), and `cells` (one
+  cube per grid cell above the level, so the render admits its own resolution).
+- **Gauged portraits** — `soliton_playground.viz_em`: the same machinery for the
+  `ehn-two-scalar` catalog states, which carry two complex scalars plus a gauge
+  and scalar potential. Views: `raw`, `cells`, `twist` (core swept as a
+  rotation-minimising tube painted by arg φ₁, so a colour spiral is real framing
+  twist), `efield`, `bfield`, `triptych`, and `cycle`. This is also the home of the
+  `load_field` that `ehn_lab/field_store.py`'s comments used to point at across a
+  repo boundary. None of it applies to the bare-Faddeev real-time runs — they
+  have no gauge sector.
+
+  ```bash
+  python -m soliton_playground.viz_em --field <dir-with-field.npz> --view triptych
+  # the charge phase travelling around the tube, with the fields travelling too
+  python -m soliton_playground.viz_em --field <dir> --view cycle \
+      --cycle-fields travelling --frames 36 --m 3
+  ```
+
+  `cycle` animates Φ₁→e^{−iθ}Φ₁: arg(φ₁) winds spatially along the loop, so
+  sweeping θ slides the colour around the tube. `--cycle-fields static` adds the
+  field's own E and B (held, since they carry no phase); `travelling` adds a
+  modelled m-harmonic source whose fields travel with the phase, affordable
+  because Maxwell linearity lets the cos/sin components be solved once and
+  recombined per frame.
+
+  Read `viz.add_parts` before touching the drawing code. matplotlib's 3D backend
+  is a painter's-algorithm renderer with no z-buffer, so it draws whole artists
+  back to front: **one Poly3DCollection per tube means a link never weaves**, and
+  no amount of reordering helps. Merging every triangle into a single collection
+  is the only construction that crosses over and under correctly, which is why
+  the module passes geometry around as `(faces, colors)` parts. That is pinned in
+  `tests/test_viz_depth.py` on a Hopf link — separate collections give the near
+  tube 0.6% of the contested pixels, merged gives 45%/55%.
 
 ## Program
 
