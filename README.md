@@ -47,6 +47,9 @@ theory died; the engine, the calorimeter, and the event graph were worth keeping
   python -m soliton_playground.viz turntable --field <field>.npz --out tt.gif
   ```
 
+  Renders are written under the gitignored `outputs/`; `docs/VIZ_GALLERY.md` has the
+  commands to regenerate every one of them.
+
   Three `--mode`s: `surface` (smoothed isosurface), `facets` (unsmoothed — the
   grid facets are left in, the upstream's "no cheat" stance), and `cells` (one
   cube per grid cell above the level, so the render admits its own resolution).
