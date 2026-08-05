@@ -614,6 +614,11 @@ def portrait(fdir, view: str, out, *, elev=22.0, azim=-56.0, dpi=140,
            f"{_header(fdir, F)}  --  {view}\n{caption}", zoom)
     fig.tight_layout()
     out = Path(out)
+    # The render is already paid for by the time we get here -- a missing parent
+    # directory otherwise throws away the whole figure at the very last step
+    # (FileNotFoundError out of Image.save, minutes into a catalog-state render).
+    # viz.write_gif/write_frames already do this; these two savefigs did not.
+    out.parent.mkdir(parents=True, exist_ok=True)
     fig.savefig(out, facecolor="black", dpi=dpi, bbox_inches="tight")
     plt.close(fig)
     print(f"wrote {out}  ({view}: {caption})")
@@ -646,6 +651,11 @@ def triptych(fdir, out, *, elev=22.0, azim=-56.0, dpi=140, zoom=1.3) -> Path:
                  color="#DDDDDD", fontsize=12, y=0.97)
     fig.tight_layout()
     out = Path(out)
+    # The render is already paid for by the time we get here -- a missing parent
+    # directory otherwise throws away the whole figure at the very last step
+    # (FileNotFoundError out of Image.save, minutes into a catalog-state render).
+    # viz.write_gif/write_frames already do this; these two savefigs did not.
+    out.parent.mkdir(parents=True, exist_ok=True)
     fig.savefig(out, facecolor="black", dpi=dpi, bbox_inches="tight")
     plt.close(fig)
     print(f"wrote {out}")
