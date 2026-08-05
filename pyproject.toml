@@ -7,7 +7,12 @@ name = "soliton-playground"
 version = "0.1.0"
 description = "Sandbox for topological structures in simulated media — play, not science"
 requires-python = ">=3.10"
-dependencies = ["numpy", "matplotlib"]
+# scipy and pillow were already present as transitive gifts (via jax and
+# matplotlib) and viz.py now imports both directly, so they are declared rather
+# than relied on by luck. scikit-image is here for marching_cubes: viz.py's
+# isosurface path is the only construction that renders a knot with its weave
+# intact, so it is a real dependency of the figures, not an extra.
+dependencies = ["numpy", "matplotlib", "scipy", "pillow", "scikit-image"]
 # jax-solitons is installed from a sibling checkout (see README) until it ships
 # to an index: pip install -e ../jax-solitons
 
