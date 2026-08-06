@@ -360,3 +360,86 @@ signal-safe teardown; reap now closes the ledger rows a dead driver never wrote)
 and in this campaign's driver (it reaps its own ledger in a `finally`). Recorded
 here because a budget line that says $18.58 with no explanation invites the
 conclusion that the physics was expensive. It was not.
+
+---
+
+# Result — 2026-08-06: the third discretisation is VOID, not failed
+
+The pre-registered next candidate after bilinear ("per-site `a = arctan2(Im, Re)`
+then a naive unwrapped central difference") was implemented (jax-solitons #95) and
+run on the same rungs, same geometry, same certified pipeline. Five legs, $0.88.
+
+    rung    Q         elec    ncomp  seg_drift   geo    chg
+      1    -0.9988    84.6      1      0.033     fail   PASS
+      2    -1.9967   154.6      2      0.033     fail   PASS
+      3    -2.9934   264.8      3      0.036     fail   PASS
+      4    -3.9982   299.6      4      0.055     fail   PASS
+      5    -4.9820   420.8      5      0.044     fail   PASS
+
+At first reading this is the best arm in the campaign: |Q| = N_link to 0.1-0.4%,
+10-30x tighter than `wrapped`, the mode built to BE the lock. It is not. It is an
+arm in which the term under test does nothing.
+
+## Why: the mode carries no winding
+
+Max circulation of grad(a) around closed periodic loops, in units of 2*pi,
+measured on this campaign's own IC:
+
+    wrapped    1.000000     exactly one winding
+    bilinear   0.010731     leaky, but nonzero -- it does carry some
+    naive      0.000000     none, at all
+
+Exactly zero, and not by accident. `a = arctan2(Im, Re)` is SINGLE-VALUED, so
+summing its central difference around a closed periodic loop telescopes to 0
+identically. The branch-cut sheet is not noise on top of an otherwise good
+gradient -- it is precisely the term that cancels the smooth winding. On the real
+IC the sheet is 194 of 110592 cells (0.18%); delete it and naive's sum goes
+0.0000 -> 18.0956 against wrapped's 20.1062.
+
+So rho = B.grad(a) has ZERO NET under naive while carrying the LARGEST |rho| of
+the three modes. The L3 coupling contributes nothing, nothing acts on the
+topology, and the run preserves its seed charge exactly. **The near-perfect
+integer Q is an absence of force, not a lock.**
+
+The trajectories say the same thing independently. On the IDENTICAL initial
+condition at n = 0:
+
+    arm        link       mag
+    wrapped   -118.44   4185.3
+    bilinear  -102.87   1288.0
+    naive        0.00      0.0
+
+and the L3 linking energy stays ~0 for the whole run (final: +0.09, -1.33, -2.58
+at rungs 1, 3, 5 -- positive at rung 1).
+
+Pinned as a regression test in jax-solitons (`test_ehn_axion_grad.py`), so no
+future arm can quietly ship a discretisation that carries no winding.
+
+## Status: VOID
+
+Not "fails at every rung". Its meters carry no information about EHN's floor,
+because the mechanism the campaign exists to test was absent from the run. The
+third candidate is retired on the ground that it is not a valid discretisation of
+a COMPACT angle at all -- which also answers the question NLINK_LADDER.md posed
+when it named this candidate: the most literal reading of EHN's sentence cannot be
+what they implemented, because it would have given them no L3 coupling either.
+
+**No envelope probe was run, deliberately.** THRESH is the el/mag ratio at which
+L3 charge is expelled; under naive there is no L3 charge, so there is nothing for
+a wall to expel and a measured threshold would describe an artefact. (`el_probe_R.py`
+is also cited in this repo only as provenance -- it is not present to run.) This
+is the same refusal as declining to let the arm borrow wrapped's threshold, one
+step further out.
+
+## Where stage 1 leaves the campaign
+
+    wrapped    BOUND at all five rungs
+    bilinear   BOUND at none -- charge dies; wall confound UNRESOLVED
+    naive      VOID -- carries no winding
+
+No arm shows an N_link-dependent floor. Stage 2 (N = 320, L = 256, ~$7.70) is now
+the only route that can settle anything, because it is the only one that removes
+the bilinear confound -- and per the note above, running it is disambiguation, not
+the confirmation it was pre-registered as.
+
+Ledger after stage 1: $19.46.
