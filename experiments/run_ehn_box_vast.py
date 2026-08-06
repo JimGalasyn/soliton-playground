@@ -238,12 +238,25 @@ def remote_exit(outdir, leg):
         return None
 
 
+#: The paths whose state can change what the BOX runs: the installed package, its
+#: metadata, and the driver that composes the command. Deliberately NOT `output/`
+#: — a run in flight rewrites its own manifest continuously, and blocking a rental
+#: on a results file that pip never sees is the check firing on the wrong thing.
+PAYLOAD = ("src", "pyproject.toml", "experiments")
+
+
 def unpushed_blockers():
     """Refuse to rent while the box would install code OLDER than what we ran.
 
     The box does `pip install git+https://.../main` for BOTH repos, so anything
     not on origin/main is simply absent there, and the run would exercise a
     different engine than the one whose commit the manifest records.
+
+    The dirty check is scoped to PAYLOAD for that reason: the question is whether
+    what pip installs matches what we believe, not whether every file in the tree
+    is committed. The HEAD-on-origin/main check stays unscoped, because a commit
+    that has not been pushed is absent from the box no matter which paths it
+    touches.
     """
     out = []
     for label, repo in (("jax-solitons", REPO.parent / "jax-solitons"),
@@ -252,7 +265,8 @@ def unpushed_blockers():
             run = lambda *x: subprocess.run(x, cwd=str(repo), capture_output=True,
                                             text=True, timeout=20)
             head = run("git", "rev-parse", "HEAD").stdout.strip()
-            dirty = run("git", "status", "--porcelain").stdout.strip()
+            dirty = run("git", "status", "--porcelain", "--",
+                        *PAYLOAD).stdout.strip()
             anc = run("git", "merge-base", "--is-ancestor", head, "origin/main")
             if anc.returncode != 0:
                 out.append(f"{label}: HEAD {head[:8]} is not on origin/main")
