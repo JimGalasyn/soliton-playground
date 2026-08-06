@@ -38,3 +38,18 @@
 {"dph": 0.2947222222222222, "event": "rented", "geo": "Thailand, TH", "gpu": "RTX 4090", "instance_id": 46988549, "offer_id": "30257785", "provider": "vast", "reliability": 0.9976562, "ts": 1786026383.911}
 {"event": "running", "instance_id": 46988549, "offer_id": "30257785", "provider": "vast", "provision_s": 309.4, "ts": 1786026692.486}
 {"billed_s": 2859.5, "destroyed": true, "est_cost_usd": 0.2341, "event": "destroyed", "instance_id": 46988549, "offer_id": "30257785", "outcome": "ok", "provider": "vast", "reason": "", "ts": 1786029244.024, "verify": "gone"}
+{"dph": 0.3213888888888889, "event": "rented", "geo": "South Korea, KR", "gpu": "RTX 4090", "instance_id": 46993753, "offer_id": "24844287", "provider": "vast", "reliability": 0.9992881, "ts": 1786030297.31}
+{"dph": 0.3213888888888889, "event": "rented", "geo": "South Korea, KR", "gpu": "RTX 4090", "instance_id": 46993755, "offer_id": "19703037", "provider": "vast", "reliability": 0.9983937, "ts": 1786030299.527}
+{"dph": 0.3347222222222222, "event": "rented", "geo": "South Korea, KR", "gpu": "RTX 4090", "instance_id": 46993757, "offer_id": "38589465", "provider": "vast", "reliability": 0.9975324, "ts": 1786030301.269}
+{"dph": 0.3347222222222222, "event": "rented", "geo": "Texas, US", "gpu": "RTX 4090", "instance_id": 46993763, "offer_id": "46940616", "provider": "vast", "reliability": 0.9950436, "ts": 1786030303.297}
+{"dph": 0.3347222222222222, "event": "rented", "geo": "Nevada, US", "gpu": "RTX 4090", "instance_id": 46993767, "offer_id": "46572120", "provider": "vast", "reliability": 0.9984294, "ts": 1786030305.478}
+{"event": "running", "instance_id": 46993767, "offer_id": "46572120", "provider": "vast", "provision_s": 108.1, "ts": 1786030412.703}
+{"event": "running", "instance_id": 46993763, "offer_id": "46940616", "provider": "vast", "provision_s": 119.1, "ts": 1786030421.67}
+{"event": "running", "instance_id": 46993757, "offer_id": "38589465", "provider": "vast", "provision_s": 130.1, "ts": 1786030430.747}
+{"event": "running", "instance_id": 46993755, "offer_id": "19703037", "provider": "vast", "provision_s": 139.4, "ts": 1786030437.978}
+{"event": "running", "instance_id": 46993753, "offer_id": "24844287", "provider": "vast", "provision_s": 254.8, "ts": 1786030551.392}
+{"billed_s": 2214.8, "destroyed": true, "est_cost_usd": 0.2059, "event": "destroyed", "instance_id": 46993763, "offer_id": "46940616", "outcome": "ok", "provider": "vast", "reason": "", "ts": 1786032518.998, "verify": "gone"}
+{"billed_s": 2283.6, "destroyed": true, "est_cost_usd": 0.2123, "event": "destroyed", "instance_id": 46993757, "offer_id": "38589465", "outcome": "ok", "provider": "vast", "reason": "", "ts": 1786032585.534, "verify": "gone"}
+{"billed_s": 2407.8, "destroyed": true, "est_cost_usd": 0.215, "event": "destroyed", "instance_id": 46993755, "offer_id": "19703037", "outcome": "ok", "provider": "vast", "reason": "", "ts": 1786032707.782, "verify": "gone"}
+{"billed_s": 2459.8, "destroyed": true, "est_cost_usd": 0.2196, "event": "destroyed", "instance_id": 46993753, "offer_id": "24844287", "outcome": "ok", "provider": "vast", "reason": "", "ts": 1786032757.718, "verify": "gone"}
+{"billed_s": 2453.0, "destroyed": true, "est_cost_usd": 0.2281, "event": "destroyed", "instance_id": 46993767, "offer_id": "46572120", "outcome": "ok", "provider": "vast", "reason": "", "ts": 1786032759.196, "verify": "gone"}

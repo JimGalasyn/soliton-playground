@@ -257,3 +257,106 @@ Not void. Its legs converged, `Lk` was exactly integral at every rung, and the
 charge meter passed at every rung. It is void only as a *reproduction* of the
 torus catalog, which it was never capable of being. Under the criteria above it
 is scored as the rings baseline, and the bilinear arm remains unrun and unjudged.
+
+---
+
+# Result — 2026-08-06: stage 1 complete, the hypothesis is NOT supported
+
+Campaign closed. All eleven legs ran at SB-1 (N=192, L=153.6, R=38.4, C=400,
+36k steps), scored under the criteria above as modified by Amendment 1.
+
+## Pipeline check
+
+    repro_t23 vs trefoil_t23 (torus T(2,3), R = 33.792)
+      det  [[978, 3]]  vs  [[978, 3]]     exact
+      Lk   -3.0        vs  -3.0           exact
+      Q    -2.867      vs  -2.868         0.03%, against a +-10% gate
+    -> CERTIFIED
+
+The box, engine commit f50853ff and these parameters reproduce a held state, so
+the arms below rest on a certified pipeline.
+
+## Outcome vs prediction
+
+    nlink            1      2      3      4      5
+    wrapped  pred   PASS   PASS   PASS   PASS   PASS
+             obs    PASS   PASS   PASS   PASS   PASS     <- as predicted
+    bilinear pred   fail   fail   fail   PASS   PASS
+             obs    fail   fail   fail   fail   fail     <- NOT as predicted
+
+The wrapped arm landed exactly as pre-registered. The bilinear arm did not: it
+fails at EVERY rung, including 4 and 5, which are the positive control.
+
+This fires a pre-registered falsifier, verbatim from the list above:
+
+> bilinear fails everywhere -> geometry inadmissible for that arm, see corollary
+
+and the corollary's instruction stands: this does NOT support the hypothesis, and
+nothing here should be read as a discretisation-driven floor.
+
+## The measurements
+
+    rung   Q wrapped   Q bilinear   elec w   elec b   |Q|/n w   |Q|/n b   b/w elec
+      1      -0.927      -0.430      107.6      7.0     0.927     0.430      0.065
+      2      -1.879      -0.833      227.1     14.5     0.939     0.416      0.064
+      3      -2.734      -1.006      365.9     22.6     0.911     0.335      0.062
+      4      -3.785      -1.593      517.0     31.6     0.946     0.398      0.061
+      5      -4.473      -1.642      704.7     41.8     0.895     0.328      0.059
+
+## What this does and does not establish
+
+**The discretisation is a large effect on charge.** Bilinear holds electric charge
+at a near-constant ~6% of wrapped, and |Q|/nlink drops from ~0.92 to ~0.38. The
+mechanism the hypothesis proposed — that bilinear lets the field drain L3 charge
+by rearranging |phi2| — is visible and substantial. That much reproduces.
+
+**It is not an N_link-dependent effect, and that is what the hypothesis needed.**
+The b/w electric ratio drifts only 0.065 -> 0.059 across a FIVEFOLD change in
+N_link, and |Q|/nlink is flat in both arms. An N_link-independent suppression
+cannot produce a floor at N_link = 4 at any magnitude. The mechanism is real; the
+floor it was invoked to explain is not in this data.
+
+**The confound is NOT resolved, and this data cannot resolve it.** The bilinear arm
+ran ~8x outside its own expulsion wall (el/mag = 312 against a threshold of 37) and
+required --force-envelope. The argument above says the wall cannot produce an
+N_link-DEPENDENT floor, which is true and is why the design was sound — but the
+observed result is uniform failure, and a wall predicts uniform failure just as
+well as a genuinely inadmissible discretisation does. Both hypotheses predict a
+flat ratio. Stage 1 therefore cannot separate them, and no claim that distinguishes
+them should be made from it.
+
+**Convergence caveat.** seg_drift on the bilinear legs is 0.6%-5.7% against the 1%
+stability criterion, so three of five fail the geometric meter on skeleton
+instability rather than on topology. ncomp tracked nlink exactly at all five rungs
+and det was 1 throughout: the geometry held, the skeletons had not settled. Read
+the bilinear geometric column as "not converged", not as "topology lost".
+
+## Where this goes next
+
+Both were named before the run, and the order is unchanged by it:
+
+1. **The third discretisation.** Per-site `a = arctan2(Im, Re)` then a naive
+   unwrapped central difference — the most literal reading of EHN's sentence, and
+   the pre-registered next candidate if bilinear did not reproduce the floor. Not
+   yet implemented in the engine.
+2. **Stage 2, N = 320 / L = 256**, which puts bilinear INSIDE its wall and is the
+   only way to retire the confound above. ~22 gpu-h, ~$7.70.
+
+Stage 2 was pre-registered as "only if stage 1 lands". Stage 1 did not land, so
+running it now is a change of purpose: it would no longer be confirmation of a
+positive result, but the disambiguation this result requires. Worth doing for that
+reason, and worth saying plainly that the reason is different.
+
+## Cost, honestly
+
+Pre-registered cap: **$12**. Actually spent on this ledger: **$18.58**.
+
+The overrun is not experiment cost. The ladder's own legs came to roughly $2.30
+(wrapped ~$1.20, bilinear $1.08, pipeline check $0.23). **$16.29 of the $18.58 was
+a single incident**: on 2026-08-05 the driver was SIGHUP'd at session end, five
+finished boxes were left running with nobody to tear them down, and they idled ~10
+h before the next morning caught them. Fixed in run-farm (SIGHUP added to the
+signal-safe teardown; reap now closes the ledger rows a dead driver never wrote)
+and in this campaign's driver (it reaps its own ledger in a `finally`). Recorded
+here because a budget line that says $18.58 with no explanation invites the
+conclusion that the physics was expensive. It was not.

@@ -1,0 +1,86 @@
+EHN FAITHFUL relaxer  N=192 L=153.6 dx=0.800 nlink=3 C=400.0 α=0.0001 β=0.002 U=50.0 q1=1.0 q2=0.0 ic=screened agrad=bilinear  (EHN E≈None)
+  n     0: Q=-3.000 link=-87% C=0 E=  5190.2 (g1=459 g2=4167 mag=1288.0 el=0.0 sky=0 pot=-724)
+        topo: Lk(φ1,φ2)=-2.887 nseg1=780 nseg2=570
+/workspace/jaxenv/lib/python3.14/site-packages/jax_solitons/knots.py:53: FutureWarning: In the future `np.object` will be defined as the corresponding NumPy scalar.
+  if not hasattr(np, a):
+Could not import cythonised chelpers, using Python alternative. This will give the same result, but is slower.
+        det(φ1): [(224, 1), (224, 1), (210, 1), (32, 1), (22, 1), (13, 1)]
+  n  1000: Q=-3.009 link=-87% C=50 E=  7256.2 (g1=488 g2=3771 mag=1132.2 el=2589.1 sky=0 pot=-724)
+        topo: Lk(φ1,φ2)=-3.106 nseg1=726 nseg2=520
+  n  2000: Q=-2.734 link=-41% C=100 E=  6028.7 (g1=569 g2=3683 mag=984.5 el=1515.1 sky=0 pot=-723)
+        topo: Lk(φ1,φ2)=-3.013 nseg1=676 nseg2=532
+  n  3000: Q=-1.798 link=-25% C=150 E=  4602.4 (g1=598 g2=3479 mag=929.9 el=319.4 sky=0 pot=-724)
+        topo: Lk(φ1,φ2)=-3.033 nseg1=684 nseg2=524
+  n  4000: Q=-1.418 link=-22% C=200 E=  4224.5 (g1=594 g2=3310 mag=881.3 el=163.0 sky=0 pot=-724)
+        topo: Lk(φ1,φ2)=-3.052 nseg1=690 nseg2=532
+  n  5000: Q=-1.154 link=-18% C=250 E=  4019.9 (g1=596 g2=3190 mag=838.7 el=119.1 sky=0 pot=-724)
+        topo: Lk(φ1,φ2)=-3.058 nseg1=688 nseg2=528
+  n  6000: Q=-0.970 link=-14% C=300 E=  3865.5 (g1=600 g2=3095 mag=801.1 el=92.9 sky=0 pot=-724)
+        topo: Lk(φ1,φ2)=-3.072 nseg1=688 nseg2=524
+        det(φ1): [(224, 1), (224, 1), (175, 'e:IndexError'), (60, 1)]
+  n  7000: Q=-0.842 link=-12% C=350 E=  3742.3 (g1=604 g2=3018 mag=767.2 el=76.9 sky=0 pot=-724)
+        topo: Lk(φ1,φ2)=-2.971 nseg1=672 nseg2=522
+  n  8000: Q=-0.752 link=-10% C=400 E=  3636.3 (g1=607 g2=2954 mag=736.8 el=62.5 sky=0 pot=-724)
+        topo: Lk(φ1,φ2)=-3.0 nseg1=704 nseg2=498
+  n  9000: Q=-0.696 link=-9% C=400 E=  3537.2 (g1=610 g2=2897 mag=708.4 el=45.5 sky=0 pot=-724)
+        topo: Lk(φ1,φ2)=-3.0 nseg1=688 nseg2=496
+  n 10000: Q=-0.661 link=-8% C=400 E=  3454.5 (g1=612 g2=2847 mag=681.8 el=37.1 sky=0 pot=-724)
+        topo: Lk(φ1,φ2)=-3.0 nseg1=666 nseg2=492
+  n 11000: Q=-0.640 link=-8% C=400 E=  3383.3 (g1=614 g2=2802 mag=657.3 el=32.8 sky=0 pot=-724)
+        topo: Lk(φ1,φ2)=-3.0 nseg1=662 nseg2=490
+  n 12000: Q=-0.628 link=-8% C=400 E=  3319.8 (g1=616 g2=2762 mag=635.0 el=30.1 sky=0 pot=-723)
+        topo: Lk(φ1,φ2)=-3.0 nseg1=650 nseg2=494
+        det(φ1): [(224, 1), (224, 1), (202, 1)]
+  n 13000: Q=-0.623 link=-7% C=400 E=  3263.0 (g1=617 g2=2726 mag=614.7 el=28.7 sky=0 pot=-723)
+        topo: Lk(φ1,φ2)=-3.0 nseg1=650 nseg2=490
+  n 14000: Q=-0.623 link=-7% C=400 E=  3210.7 (g1=618 g2=2692 mag=596.2 el=27.5 sky=0 pot=-723)
+        topo: Lk(φ1,φ2)=-3.0 nseg1=646 nseg2=482
+  n 15000: Q=-0.628 link=-7% C=400 E=  3162.7 (g1=619 g2=2661 mag=579.3 el=26.7 sky=0 pot=-723)
+        topo: Lk(φ1,φ2)=-3.0 nseg1=644 nseg2=472
+  n 16000: Q=-0.636 link=-7% C=400 E=  3118.3 (g1=619 g2=2632 mag=563.8 el=26.0 sky=0 pot=-723)
+        topo: Lk(φ1,φ2)=-3.0 nseg1=644 nseg2=476
+  n 17000: Q=-0.647 link=-7% C=400 E=  3076.8 (g1=619 g2=2605 mag=549.6 el=25.5 sky=0 pot=-723)
+        topo: Lk(φ1,φ2)=-3.0 nseg1=644 nseg2=480
+  n 18000: Q=-0.661 link=-7% C=400 E=  3038.3 (g1=619 g2=2580 mag=536.6 el=25.3 sky=0 pot=-723)
+        topo: Lk(φ1,φ2)=-3.0 nseg1=652 nseg2=484
+        det(φ1): [(224, 1), (224, 1), (204, 1)]
+  n 19000: Q=-0.676 link=-7% C=400 E=  3001.9 (g1=619 g2=2556 mag=524.7 el=24.8 sky=0 pot=-723)
+        topo: Lk(φ1,φ2)=-3.0 nseg1=648 nseg2=492
+  n 20000: Q=-0.693 link=-7% C=400 E=  2968.0 (g1=619 g2=2534 mag=513.6 el=24.7 sky=0 pot=-723)
+        topo: Lk(φ1,φ2)=-3.0 nseg1=648 nseg2=502
+  n 21000: Q=-0.711 link=-7% C=400 E=  2935.4 (g1=618 g2=2513 mag=503.4 el=24.1 sky=0 pot=-723)
+        topo: Lk(φ1,φ2)=-3.0 nseg1=648 nseg2=520
+  n 22000: Q=-0.730 link=-7% C=400 E=  2905.1 (g1=618 g2=2492 mag=494.0 el=24.1 sky=0 pot=-723)
+        topo: Lk(φ1,φ2)=-3.0 nseg1=648 nseg2=528
+  n 23000: Q=-0.749 link=-7% C=400 E=  2876.3 (g1=617 g2=2473 mag=485.3 el=24.0 sky=0 pot=-723)
+        topo: Lk(φ1,φ2)=-3.0 nseg1=650 nseg2=528
+  n 24000: Q=-0.769 link=-7% C=400 E=  2848.5 (g1=616 g2=2454 mag=477.1 el=23.5 sky=0 pot=-723)
+        topo: Lk(φ1,φ2)=-3.0 nseg1=650 nseg2=528
+        det(φ1): [(224, 1), (224, 1), (202, 1)]
+  n 25000: Q=-0.790 link=-7% C=400 E=  2822.5 (g1=615 g2=2436 mag=469.6 el=23.5 sky=0 pot=-722)
+        topo: Lk(φ1,φ2)=-3.0 nseg1=650 nseg2=528
+  n 26000: Q=-0.810 link=-7% C=400 E=  2797.4 (g1=615 g2=2419 mag=462.5 el=23.3 sky=0 pot=-722)
+        topo: Lk(φ1,φ2)=-3.0 nseg1=654 nseg2=518
+  n 27000: Q=-0.831 link=-7% C=400 E=  2773.5 (g1=614 g2=2403 mag=455.9 el=23.1 sky=0 pot=-722)
+        topo: Lk(φ1,φ2)=-3.0 nseg1=650 nseg2=522
+  n 28000: Q=-0.851 link=-7% C=400 E=  2750.7 (g1=613 g2=2387 mag=449.7 el=23.1 sky=0 pot=-722)
+        topo: Lk(φ1,φ2)=-3.0 nseg1=650 nseg2=518
+  n 29000: Q=-0.871 link=-7% C=400 E=  2728.9 (g1=612 g2=2372 mag=443.9 el=23.1 sky=0 pot=-722)
+        topo: Lk(φ1,φ2)=-3.0 nseg1=654 nseg2=510
+  n 30000: Q=-0.892 link=-7% C=400 E=  2707.6 (g1=611 g2=2357 mag=438.5 el=22.9 sky=0 pot=-722)
+        topo: Lk(φ1,φ2)=-3.0 nseg1=652 nseg2=508
+        det(φ1): [(224, 1), (224, 1), (204, 1)]
+  n 31000: Q=-0.911 link=-7% C=400 E=  2687.2 (g1=610 g2=2343 mag=433.4 el=22.6 sky=0 pot=-722)
+        topo: Lk(φ1,φ2)=-3.0 nseg1=654 nseg2=496
+  n 32000: Q=-0.931 link=-7% C=400 E=  2667.7 (g1=610 g2=2329 mag=428.6 el=22.7 sky=0 pot=-722)
+        topo: Lk(φ1,φ2)=-3.0 nseg1=652 nseg2=498
+  n 33000: Q=-0.950 link=-7% C=400 E=  2649.1 (g1=609 g2=2315 mag=424.0 el=22.9 sky=0 pot=-722)
+        topo: Lk(φ1,φ2)=-3.0 nseg1=652 nseg2=492
+  n 34000: Q=-0.969 link=-7% C=400 E=  2631.0 (g1=608 g2=2302 mag=419.7 el=22.8 sky=0 pot=-722)
+        topo: Lk(φ1,φ2)=-3.0 nseg1=652 nseg2=500
+  n 35000: Q=-0.988 link=-7% C=400 E=  2613.2 (g1=607 g2=2290 mag=415.6 el=22.5 sky=0 pot=-722)
+        topo: Lk(φ1,φ2)=-3.0 nseg1=652 nseg2=504
+  n 36000: Q=-1.006 link=-7% C=400 E=  2596.4 (g1=606 g2=2278 mag=411.8 el=22.6 sky=0 pot=-722)
+        topo: Lk(φ1,φ2)=-3.0 nseg1=650 nseg2=516
+        det(φ1): [(224, 1), (224, 1), (202, 1)]
+  FINAL E=2596.4 (EHN≈None) link=-7% Lk(φ1,φ2)=-3.0 det(φ1)=[(224, 1), (224, 1), (202, 1)] mag=411.8 el=22.6  (1971s)
