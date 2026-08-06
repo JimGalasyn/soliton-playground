@@ -68,6 +68,7 @@ stability upgrade within RunPod and needs a higher --max-dph.
 """
 import argparse
 import json
+import math
 import shlex
 import subprocess
 import sys
@@ -248,6 +249,40 @@ def load_manifest(outdir, label):
         return None
 
 
+def leg_void_reason(manifest, rc):
+    """Why this leg's meters must not be scored, or None if they can be.
+
+    Three ways a leg has now produced success-shaped output while measuring
+    nothing, all of them observed in this campaign:
+
+      no-finish  rc != 0, or no marker at all. The box died. An early death still
+                 files an n=0 sample, and n=0 carries the SEED's charge, which
+                 passes |Q| >= 0.5*nlink by construction (an N=320 OOM scored
+                 `chg PASS` off a one-sample trajectory, 2026-08-06).
+      diverged   the engine ran to a CLEAN exit with a non-finite energy. rc is 0
+                 and the marker is perfect, so no exit-code check catches it
+                 (wrapped at N=320 NaNed by step 1000, 2026-08-06).
+
+    `diverged` is not a failed meter and must not print as one. Scoring NaN as
+    `chg fail` says "the physics failed" where the truth is "nothing was
+    measured" -- the same misreading as scoring a corpse, one layer in.
+    """
+    if rc != 0:
+        return "no-finish"
+    if not manifest:
+        return "no-manifest"
+    if manifest.get("e_finite") is False:
+        return "diverged"
+    # Defence in depth: e_finite is the engine's own verdict, but a NaN that
+    # reaches the trajectory without it must not be scored either.
+    f = _final(manifest) or {}
+    for k in ("Q", "total"):
+        v = f.get(k)
+        if v is not None and not math.isfinite(float(v)):
+            return "diverged"
+    return None
+
+
 def score_charge(manifest, nlink):
     """PRE-REGISTERED charge meter: |Q| >= 0.5*nlink.
 
@@ -308,7 +343,10 @@ def score_geometry(manifest, ref_det=None, want_ncomp=None):
             ev["nseg1"] = tail[-1]
             stable = drift <= 0.01
     if manifest.get("e_finite") is False:
-        return False, ev
+        # None (unmeasured), not False (failed). A diverged run has no geometry to
+        # judge -- `leg_void_reason` voids the whole leg on this same flag, and the
+        # two must agree or the evidence dict contradicts the verdict beside it.
+        return None, ev
     ev["want_ncomp"] = 1 if want_ncomp is None else want_ncomp
     ok = (ncomp == ev["want_ncomp"]) and (stable is not False)
     if ref_det is not None and det is not None:
@@ -395,20 +433,15 @@ def report(outdir, legs_meta, results=None, arms=ARMS, rungs=RUNGS):
             meta = legs_meta.get(lab)
             if meta is not None:
                 rc = remote_exit(outdir, meta)
-            # VOID a leg the box did not finish. `remote_exit`'s own docstring
-            # warns that None is NO EVIDENCE and never a pass, and scoring a
-            # nonzero rc is the same mistake one step later: a leg that dies early
-            # still has its n=0 sample in the manifest, and n=0 carries the SEED's
-            # charge, which passes |Q| >= 0.5*nlink by construction. Measured
-            # 2026-08-06: an N=320 probe OOMed at the first relax step and scored
-            # `chg PASS` off a trajectory one sample long. A dead leg must
-            # contribute nothing to either meter, not a free pass on one of them.
-            void = rc != 0
-            if void:
+            # A leg that did not finish, or finished with a non-finite energy,
+            # contributes nothing to either meter -- see leg_void_reason for the
+            # three ways that has happened here. Neither is a failed meter.
+            reason = leg_void_reason(man, rc)
+            if reason:
                 geo = chg = None
             bound = (geo is True) and (chg is True)
-            table[lab] = dict(geo=geo, chg=chg, bound=bound, rc=rc, void=void,
-                              **gev, **cev)
+            table[lab] = dict(geo=geo, chg=chg, bound=bound, rc=rc,
+                              void=bool(reason), void_reason=reason, **gev, **cev)
 
     hdr = f"{'leg':22s} {'rc':>4s} {'det':>5s} {'ncomp':>5s} {'nseg':>6s} {'Q':>9s} {'elec':>8s}  geo  chg  BOUND"
     if table:
@@ -425,10 +458,16 @@ def report(outdir, legs_meta, results=None, arms=ARMS, rungs=RUNGS):
                   f"{f(r['geo']):4s} {f(r['chg']):4s} "
                   + ("VOID" if r['void'] else ("YES" if r['bound'] else "no")))
         print()
-    if any(r['void'] for r in table.values()):
-        print("  VOID = the box did not finish this leg (rc != 0, or no marker). "
-              "Its meters are not scored: an early death still files an n=0 sample, "
-              "and n=0 carries the seed's charge.\n")
+    voids = {lab: r['void_reason'] for lab, r in table.items() if r['void']}
+    if voids:
+        print("  VOID = this leg measured nothing, so neither meter is scored. "
+              "NOT a failed meter:")
+        for lab, why in sorted(voids.items()):
+            print(f"    {lab:22s} {why}")
+        print("    no-finish = the box died (rc != 0 / no marker); its n=0 sample "
+              "carries the SEED's charge and would pass the charge gate.")
+        print("    diverged  = clean exit, non-finite energy. A NaN is not a "
+              "measurement; scoring it 'fail' would read as a physics result.\n")
 
     ok, lines = check_repro(outdir, table, arms, rungs)
     print("PIPELINE CHECK (catalog seed, catalog parameters — Amendment 1):")
