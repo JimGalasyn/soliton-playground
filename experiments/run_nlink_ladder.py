@@ -99,8 +99,22 @@ OUT_SUB = "out_nlink"
 ARMS = ("wrapped", "bilinear")
 RUNGS = (1, 2, 3, 4, 5)
 
-#: rung -> the catalog entry the wrapped arm must reproduce at that rung.
-REPRO = {1: "unknot_bare", 3: "trefoil_t23", 5: "cinquefoil_t25"}
+#: The pipeline check (Amendment 1, 2026-08-06). One leg on the CATALOG's seed and
+#: the CATALOG's parameters, whose job is to certify that this box, this engine
+#: commit and these parameters still produce known-good physics.
+#:
+#: It is not a rung. The gate used to live on wrapped/{1,3,5}, comparing a rings
+#: seed against torus-seeded catalog entries — `build_ic(geom="rings", nlink=3)`
+#: threads three separate φ₁ loops (det 1 each) while `trefoil_t23` is one T(2,3)
+#: curve (det 3), so that comparison could never pass however good the physics.
+#: Recovered from output/alpha_formation/README.md:24, whose control reproduces
+#: the archived entry to 0.06% on E and exactly on topology.
+REPRO_LEG = "repro_t23"
+REPRO_SEED = {"tp": 2, "tq": 3, "R": 33.792, "catalog": "trefoil_t23"}
+#: Tolerance on Q only. det and Lk are integers and are matched exactly; Q is a
+#: converged float, and 10% clears the 0.06% the alpha_formation control saw by
+#: enough that host-to-host variation is not read as a pipeline regression.
+REPRO_Q_TOL = 0.10
 
 #: The pinned worker environment. See the module docstring.
 REMOTE_ENV = {"XLA_FLAGS": "--xla_gpu_autotune_level=0"}
@@ -176,6 +190,28 @@ def relax_args(a, agrad, nlink, out):
         f"--out {out}")
 
 
+def repro_args(a, out):
+    """The engine invocation for the pipeline check (Amendment 1).
+
+    Deliberately NOT `relax_args` with a different geom: this leg reproduces a
+    held catalog state, so it takes that state's OWN R (33.792, i.e. 0.22*L) and
+    seed, not the ladder's frozen R=38.4. Sharing the ladder's radius would make
+    it a different run from the one the catalog recorded, and it would certify
+    nothing. Everything the catalog and the ladder agree on (N, L, C, alpha,
+    lam, kappa, ic, cramp, steps, agrad=wrapped) is shared.
+    """
+    return (
+        f"-m jax_solitons.ehn.relax "
+        f"--geom torus --tp {REPRO_SEED['tp']} --tq {REPRO_SEED['tq']} "
+        f"--R {REPRO_SEED['R']} --core {a.core} "
+        f"--N {a.N} --L {a.L} --C {a.C} --U 50 --lam {a.lam} --kappa {a.kappa} "
+        f"--alpha {a.alpha} --beta 2e-3 --cramp 8000 --agrad wrapped "
+        f"--ic screened --steps {a.steps} --samples {a.samples} "
+        f"--topo-every {a.topo_every} "
+        f"--det-every {a.det_every} --det-timeout {a.det_timeout} "
+        f"--out {out}")
+
+
 # ------------------------------------------------------------------ scoring --
 def _final(manifest):
     """The last trajectory sample, or None."""
@@ -212,12 +248,20 @@ def score_charge(manifest, nlink):
                                    "elec": None if el is None else round(float(el), 1)}
 
 
-def score_geometry(manifest, ref_det=None):
-    """PRE-REGISTERED geometric meter: det matches the arm-paired reference, one
-    dominant component, and skeleton size stable to ±1% over the last third.
+def score_geometry(manifest, ref_det=None, want_ncomp=None):
+    """PRE-REGISTERED geometric meter: det matches the arm-paired reference, the
+    seed's own component count, and skeleton size stable to ±1% over the last third.
 
     `ref_det` is the wrapped arm's determinant at the SAME rung, so this never
     assumes which knot type a rung produces — the ladder pairs itself.
+
+    `want_ncomp` is the count the SEED constructs (Amendment 1, 2026-08-06).
+    Pre-registration asked for `ncomp == 1`, which no seed family satisfies across
+    the rungs: `build_ic(geom="rings", nlink=k)` threads k separate φ₁ loops, so
+    ncomp == nlink, and the torus alternative has gcd(2, q) components — so q=2
+    and q=4 would fail an ncomp==1 test just as rings ≥2 does. A criterion no
+    admissible seed can meet measures the criterion, not the physics. None keeps
+    the old behaviour for callers that have not been amended.
     """
     if not manifest:
         return None, {}
@@ -244,43 +288,67 @@ def score_geometry(manifest, ref_det=None):
             stable = drift <= 0.01
     if manifest.get("e_finite") is False:
         return False, ev
-    ok = (ncomp == 1) and (stable is not False)
+    ev["want_ncomp"] = 1 if want_ncomp is None else want_ncomp
+    ok = (ncomp == ev["want_ncomp"]) and (stable is not False)
     if ref_det is not None and det is not None:
         ok = ok and (det == ref_det)
     return ok, ev
 
 
-def check_repro(outdir, results_by_label, arms=ARMS, rungs=RUNGS):
-    """Score the wrapped arm against the catalog entries it must reproduce.
+def check_repro(outdir, results_by_label=None, arms=ARMS, rungs=RUNGS):
+    """Score the pipeline-check leg against the catalog state it reproduces.
 
     A campaign that cannot reproduce what the repo already holds has not earned the
-    right to report anything about the arm it is testing.
+    right to report anything about the arm it is testing. What changed in Amendment
+    1 is WHICH leg carries that burden, not that it is carried: the check now runs
+    on the catalog's own torus seed (`repro_t23`), because the science rungs use a
+    rings seed that no torus entry can adjudicate.
+
+    Returns (ok, lines). `ok` is False when the leg is missing — an absent pipeline
+    check is an unmet gate, not a waived one.
     """
-    lines, all_ok = [], True
-    cat = REPO / "src" / "soliton_playground" / "ehn_lab" / "particles"
-    for nlink, name in sorted(REPRO.items()):
-        if nlink not in rungs or "wrapped" not in arms:
-            continue                       # partial run: not this campaign's claim
-        lab = label_of("wrapped", nlink)
-        man = load_manifest(outdir, lab)
-        try:
-            entry = json.loads((cat / name / "entry.json").read_text())
-        except OSError:
-            lines.append(f"  {lab}: catalog entry {name} not readable — cannot check")
-            all_ok = False
-            continue
-        want = entry.get("measured", {})
-        got_det = (man or {}).get("det1")
-        want_det = want.get("phi1_knot")
-        f = _final(man)
-        got_q = None if f is None else round(float(f.get("Q", float("nan"))), 3)
-        want_q = round(float(entry.get("energy_final", {}).get("Q", float("nan"))), 3)
-        ok = (got_det is not None and want_det is not None
-              and int(got_det[0][1]) == int(want_det[0][1]))
-        all_ok = all_ok and ok
-        lines.append(f"  {lab} vs {name}: det {got_det} vs {want_det} "
-                     f"| Q {got_q} vs {want_q}  -> {'REPRODUCES' if ok else 'DOES NOT'}")
-    return all_ok, lines
+    lines, cat = [], REPO / "src" / "soliton_playground" / "ehn_lab" / "particles"
+    name = REPRO_SEED["catalog"]
+    man = load_manifest(outdir, REPRO_LEG)
+    if not man:
+        return False, [f"  {REPRO_LEG}: MISSING — the pipeline check did not run, "
+                       f"so nothing certifies this box/commit. Gate is UNMET."]
+    try:
+        entry = json.loads((cat / name / "entry.json").read_text())
+    except OSError:
+        return False, [f"  {REPRO_LEG}: catalog entry {name} not readable — "
+                       f"cannot check"]
+
+    want = entry.get("measured", {})
+    want_det, want_lk = want.get("phi1_knot"), want.get("Lk_phi1_phi2")
+    want_q = float(entry.get("energy_final", {}).get("Q", float("nan")))
+    f = _final(man) or {}
+    got_det, got_lk = man.get("det1"), f.get("xlk")
+    got_q = f.get("Q")
+
+    # det and Lk are integer-valued and must match exactly; Q is a converged float
+    # and gets REPRO_Q_TOL. All three are required — a run can hold the topology
+    # while the charge dies (that is the whole bilinear failure mode), so topology
+    # alone would certify a pipeline that has lost the quantity under test.
+    det_ok = (got_det is not None and want_det is not None
+              and [list(c) for c in got_det] == [list(c) for c in want_det])
+    lk_ok = (got_lk is not None and want_lk is not None
+             and abs(float(got_lk) - float(want_lk)) < 1e-6)
+    q_ok = (got_q is not None and want_q == want_q
+            and abs(float(got_q) - want_q) <= REPRO_Q_TOL * abs(want_q))
+    ok = det_ok and lk_ok and q_ok
+
+    def mark(b):
+        return "ok" if b else "FAIL"
+    lines.append(f"  {REPRO_LEG} vs {name} "
+                 f"(torus T({REPRO_SEED['tp']},{REPRO_SEED['tq']}) "
+                 f"R={REPRO_SEED['R']}):")
+    lines.append(f"    det  {got_det} vs {want_det}  [{mark(det_ok)}]")
+    lines.append(f"    Lk   {got_lk} vs {want_lk}  [{mark(lk_ok)}]")
+    lines.append(f"    Q    {None if got_q is None else round(float(got_q), 3)} vs "
+                 f"{round(want_q, 3)} (±{REPRO_Q_TOL:.0%})  [{mark(q_ok)}]")
+    lines.append(f"  -> pipeline {'CERTIFIED' if ok else 'NOT certified'}")
+    return ok, lines
 
 
 def report(outdir, legs_meta, results=None, arms=ARMS, rungs=RUNGS):
@@ -296,7 +364,9 @@ def report(outdir, legs_meta, results=None, arms=ARMS, rungs=RUNGS):
         for nlink in rungs:
             lab = label_of(agrad, nlink)
             man = load_manifest(outdir, lab)
-            geo, gev = score_geometry(man, ref_det.get(nlink))
+            # want_ncomp=nlink: the rings seed threads exactly nlink φ₁ loops, so
+            # that is the count a leg holding its topology must return (Amendment 1).
+            geo, gev = score_geometry(man, ref_det.get(nlink), want_ncomp=nlink)
             chg, cev = score_charge(man, nlink)
             if agrad == "wrapped" and gev.get("det") is not None:
                 ref_det[nlink] = gev["det"]
@@ -323,12 +393,12 @@ def report(outdir, legs_meta, results=None, arms=ARMS, rungs=RUNGS):
         print()
 
     ok, lines = check_repro(outdir, table, arms, rungs)
-    print("REPRODUCTION TEST (wrapped arm vs the catalog):")
+    print("PIPELINE CHECK (catalog seed, catalog parameters — Amendment 1):")
     for ln in lines:
         print(ln)
     if not ok:
-        print("  -> CAMPAIGN IS BROKEN. The wrapped arm does not reproduce states this "
-              "repo already holds; no bilinear result from this run counts.")
+        print("  -> CAMPAIGN IS BROKEN. This box/commit does not reproduce a state "
+              "this repo already holds; no result from this run counts.")
         return 1
 
     wfloor = [n for n in rungs if 'wrapped' in arms
@@ -405,6 +475,11 @@ def main():
     ap.add_argument("--dry-run", action="store_true")
     ap.add_argument("--score-only", action="store_true",
                     help="re-score an existing output dir, rent nothing")
+    ap.add_argument("--no-repro", dest="repro", action="store_false",
+                    help="omit the pipeline-check leg (Amendment 1). The gate then "
+                         "reports UNMET and report() refuses to interpret any rung, "
+                         "so this is for re-running science legs into an output dir "
+                         "whose check has ALREADY passed — not for skipping it.")
     ap.add_argument("--force-envelope", action="store_true")
     a = ap.parse_args()
 
@@ -415,32 +490,49 @@ def main():
                             cwd=str(REPO.parent / "jax-solitons"),
                             capture_output=True, text=True).stdout.strip()
 
+    # (label, engine-args) for every leg: the pipeline check first, then the
+    # science rungs. It runs alongside them rather than ahead of them because the
+    # legs are independent and a serialised gate would add its 1.18 h to the
+    # campaign's wall-clock for no extra information -- report() refuses to
+    # interpret any rung until the check passes, whenever it lands.
+    specs = []
+    if a.repro:
+        specs.append((REPRO_LEG, repro_args(a, OUT_SUB)))
+    specs += [(label_of(agrad, nlink), relax_args(a, agrad, nlink, OUT_SUB))
+              for agrad in arms for nlink in rungs]
+
     legs, legs_meta = [], {}
-    for agrad in arms:
-        for nlink in rungs:
-            lab = label_of(agrad, nlink)
-            leg = FleetLeg(
-                label=lab,
-                command=build_command(relax_args(a, agrad, nlink, OUT_SUB),
-                                      commit, out=OUT_SUB, env=REMOTE_ENV),
-                ship=(), fetch=OUT_SUB, done_when=f"{OUT_SUB}/DONE",
-                resumable=True, reattachable=True,
-                # Tee the box's stdout to <leg>/progress.log as it arrives. Without
-                # it a leg that dies before its first fetch interval takes its
-                # diagnosis with it: the on-box preflight prints WHY it failed and
-                # cats preflight.log, and all of that reached us as a truncated tail
-                # showing a pip warning. The evidence has to land locally while the
-                # box is still alive.
-                stream_progress=True)
-            legs.append(leg)
-            legs_meta[lab] = leg
+    for lab, engine_args in specs:
+        leg = FleetLeg(
+            label=lab,
+            command=build_command(engine_args, commit, out=OUT_SUB,
+                                  env=REMOTE_ENV),
+            ship=(), fetch=OUT_SUB, done_when=f"{OUT_SUB}/DONE",
+            resumable=True, reattachable=True,
+            # Tee the box's stdout to <leg>/progress.log as it arrives. Without
+            # it a leg that dies before its first fetch interval takes its
+            # diagnosis with it: the on-box preflight prints WHY it failed and
+            # cats preflight.log, and all of that reached us as a truncated tail
+            # showing a pip warning. The evidence has to land locally while the
+            # box is still alive.
+            stream_progress=True)
+        legs.append(leg)
+        legs_meta[lab] = leg
 
     if a.score_only:
         return report(outdir, legs_meta, arms=arms, rungs=rungs)
 
-    print(f"N_LINK LADDER: {len(arms)} arm(s) x {len(rungs)} rung(s) = {len(legs)} legs")
+    print(f"N_LINK LADDER: {len(arms)} arm(s) x {len(rungs)} rung(s)"
+          + (f" + 1 pipeline check" if a.repro else "")
+          + f" = {len(legs)} legs")
     print(f"  SB-1: N={a.N} L={a.L} dx={a.L/a.N:.2f} R={a.R} (R/L={a.R/a.L:.3f}) "
           f"C={a.C}  steps={a.steps}")
+    if a.repro:
+        print(f"  pipeline check: {REPRO_LEG} = torus T({REPRO_SEED['tp']},"
+              f"{REPRO_SEED['tq']}) at the CATALOG's R={REPRO_SEED['R']}, "
+              f"vs {REPRO_SEED['catalog']}")
+    else:
+        print("  pipeline check: OMITTED (--no-repro) — the gate will report UNMET")
     print(f"  engine commit {commit[:8]}")
     print(f"  provider {a.provider}"
           + (f" ({a.cloud_type})" if a.provider == "runpod" else "")

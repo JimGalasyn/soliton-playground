@@ -154,3 +154,106 @@ compact-angle derivative that makes integral rho an integer invariant instead of
 modulus-weighted quantity the field can drain. That is a statement about lattice
 field theory, testable by anyone, and it predicts that any future implementation
 using a smooth phase-velocity derivative will rediscover the same floor.
+
+---
+
+# Amendment 1 — 2026-08-06: the reproduction gate was untestable as written
+
+**This section is appended, not merged into the text above.** The original
+pre-registration stays verbatim so the change is auditable. Everything not named
+here remains frozen exactly as pre-registered.
+
+## What was found
+
+The first wrapped arm ran 2026-08-05 (five legs, 36k steps, all complete) and
+scored **CAMPAIGN IS BROKEN**. The cause is not physics. It is that the
+reproduction gate compares two different initial conditions.
+
+`build_ic(geom="rings", nlink=k)` seeds **k separate small φ₁ rings** threaded on
+the big φ₂ ring — a k-component link of unknots. That is EHN's IC and is the right
+seed for this campaign. The catalog states the gate checks against are
+**single-component torus knots** built by `build_ic_torus`:
+
+| | `unknot_bare` | `trefoil_t23` | `cinquefoil_t25` | this ladder |
+| --- | --- | --- | --- | --- |
+| seed        | —        | torus T(2,3) | torus T(2,5) | rings, nlink loops |
+| `phi1_knot` | [[288,1]] | [[978,3]]   | [[822,5]]    | nlink x [[~220,1]] |
+| components  | 1        | 1            | 1            | nlink |
+| R           | —        | 33.792       | 22.5         | 38.4 (frozen) |
+| steps       | 24000    | 36000        | 24000        | 36000 |
+
+Generating commands, recovered independently of the manifests:
+
+    trefoil_t23     output/alpha_formation/README.md:24
+                    --N 192 --L 153.6 --R 33.792 --geom torus --tp 2 --tq 3
+                    (that README's control reproduces the archived entry to 0.06%
+                    on E and exactly on topology: 978 segs, Lk -3.0)
+    cinquefoil_t25  experiments/reference/run_periodic_table_fleet.py:77
+                    --geom torus --tp 2 --tq 5 --R 22.5 --steps 24000
+
+**Why the error was available to make.** The catalog landed 2026-08-01, one day
+before seed geometry was recorded in manifests (jax-solitons cdcd263, 2026-08-02).
+So `trefoil_t23/manifest.json` carries `nlink: 3` and no `geom` — and the torus
+branch sets `nlink = tq`, so that `3` is a torus winding, not a rings count.
+`relax.py:_seed_params` documents this exact trap ("the held T(2,3) trefoil at
+N_link=3 exists only on the torus branch"), having hit it on 2026-08-02. This doc
+was written 2026-08-05 and read the `3` as a rings count.
+
+Consequences, both structural rather than empirical:
+
+  - `check_repro` compares `det[0][1]`. Rings at nlink=3 gives det 1 (an unknot);
+    the trefoil is det 3. **It cannot pass at nlink 3 or 5 on any physics.**
+  - `score_geometry` requires `ncomp == 1`. Rings gives `ncomp == nlink`, so
+    **every rung >= 2 fails by construction, in both arms.** Note this is not
+    fixed by switching to torus: T(2,q) has gcd(2,q) components, so q = 2 and 4
+    would fail the same test. No seed family satisfies `ncomp == 1` across
+    rungs 1-5.
+
+Also incorrect above: "steps = 36000 ... is the horizon the catalog's
+pre-registration used". True for `trefoil_t23` only; the other two targets were
+measured at 24000.
+
+## What changes
+
+**1. The geometric meter's component criterion becomes per-rung.** PASS requires
+`ncomp == nlink` for a rings seed (the seed's own construction), replacing
+`ncomp == 1`. The determinant and segment-stability criteria are unchanged, and
+the determinant stays self-paired against the wrapped arm at the same rung.
+
+**2. The reproduction gate moves off the science legs and onto its own leg.**
+What the gate is for is unchanged and still load-bearing: certify that THIS box,
+THIS engine commit and THESE parameters produce known-good physics before any
+bilinear number is believed. That job needs the catalog's own seed, so it gets a
+dedicated leg run at the catalog's own parameters:
+
+    repro_t23   --geom torus --tp 2 --tq 3 --R 33.792 --steps 36000 --agrad wrapped
+    PASS iff    phi1_knot == [[978, 3]] and Lk == -3.0 and Q within 10% of -2.868
+
+One leg, ~1.18 h, ~$0.42. It is a pipeline check, not a rung of the ladder, and
+its result gates the campaign exactly as the old wrapped/{1,3,5} check was meant
+to. If it fails, no result from this campaign counts.
+
+**3. The 2026-08-05 wrapped arm becomes the rings baseline.** It is the first
+rings-seeded measurement at this geometry, so nothing held could have adjudicated
+it. It is recorded as reference, and future rings campaigns reproduce IT:
+
+    nlink        1        2        3        4        5
+    Lk          -1.000   -2.000   -3.000   -4.000   -5.000   exact at every rung
+    ncomp        1        2        3        4        5
+    det          1        1        1        1        1        (unknot components)
+    Q           -0.927   -1.879   -2.734   -3.785   -4.473
+    elec         107.6    227.1    365.9    517.0    704.7
+    nseg1        202      390      676      780      1122
+
+**Deliberately NOT changed.** The charge meter (`|Q| >= 0.5*nlink`), the arms, the
+rungs, R = 38.4, steps = 36000, the confound argument, and the predicted outcome
+all stand as pre-registered. The charge meter passed at every rung on 2026-08-05
+(Q ~ -0.9*nlink against a 0.5*nlink threshold) and is not touched here — amending
+a meter that already fired would be fitting the gate to the datum.
+
+## Status of the 2026-08-05 wrapped arm
+
+Not void. Its legs converged, `Lk` was exactly integral at every rung, and the
+charge meter passed at every rung. It is void only as a *reproduction* of the
+torus catalog, which it was never capable of being. Under the criteria above it
+is scored as the rings baseline, and the bilinear arm remains unrun and unjudged.
