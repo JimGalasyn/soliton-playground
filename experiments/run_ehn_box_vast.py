@@ -40,6 +40,7 @@ theirs, and step counts are NOT comparable to the paper without that factor.
 """
 import argparse
 import json
+import shlex
 import subprocess
 import sys
 import time
@@ -74,7 +75,7 @@ def relax_args(a, out):
         f"--save-every {a.save_every} --out {out}")
 
 
-def build_command(engine_argv, engine_commit, out="out_ehn_box"):
+def build_command(engine_argv, engine_commit, out="out_ehn_box", env=None):
     """A RE-ENTERABLE leg: launch the relaxation detached, then wait on the marker.
 
     `engine_argv` is the engine invocation (see relax_args) and `out` its output
@@ -117,6 +118,13 @@ def build_command(engine_argv, engine_commit, out="out_ehn_box"):
     return (
         f"cd /workspace && mkdir -p {out} && "
         f"export ENGINE_COMMIT={engine_commit} && "
+        # Worker environment exported HERE rather than via the executor, because
+        # FleetExecutor has no remote_env (that is ProviderExecutor's) and a
+        # non-interactive `ssh host cmd` sources no profile, so onstart's exports
+        # never reach the payload. Putting it in the command means it also appears
+        # in whatever records the command, instead of living in launcher config.
+        + "".join(f"export {k}={shlex.quote(str(v))} && "
+                  for k, v in sorted((env or {}).items())) +
         # pyknotid is listed EXPLICITLY rather than via jax-solitons' `knots` extra.
         # It is optional upstream for a good reason -- tracing curves needs only
         # numpy/scipy, only the Alexander determinant needs pyknotid -- and this leg

@@ -41,8 +41,16 @@ GPU autotuning selects kernels per process, so without
 `XLA_FLAGS=--xla_gpu_autotune_level=0` a resumed leg is not bit-identical to an
 uninterrupted one (run-farm measured 1 divergence in 3 attempts, 73% of entries).
 An arm-to-arm comparison whose legs are not individually reproducible is not a
-comparison. `RemoteEnvPinned` is NOT part of standard_gauntlet — it has to be added
-explicitly, and the executor therefore has to be built BEFORE the gauntlet runs.
+comparison.
+
+run-farm's `RemoteEnvPinned` guards that property but reads
+`ProviderExecutor.remote_env`, and this campaign runs on `FleetExecutor`, which has
+no such parameter — passing it raises TypeError instead of pinning anything. So the
+export goes into the leg command itself (build_command's `env`) and `LegEnvPinned`
+below checks the built commands. That is the stronger placement anyway: a
+non-interactive `ssh host cmd` sources no profile, so onstart's exports would not
+reach the payload by either route, and a variable in the command appears in
+whatever records the command.
 
 PROVIDER. RunPod by default rather than Vast, because these are ~1.2 h legs and
 Vast's spot pool has already cost this project real money for nothing: a
@@ -60,13 +68,14 @@ stability upgrade within RunPod and needs a higher --max-dph.
 """
 import argparse
 import json
+import shlex
 import subprocess
 import sys
 from pathlib import Path
 
 from run_farm.budget import BudgetExceeded, CappedProvider, estimate
 from run_farm.fleet import FleetExecutor, FleetLeg, SentinelReady
-from run_farm.gauntlet import (GauntletError, RemoteEnvPinned, require_gauntlet,
+from run_farm.gauntlet import (CheckResult, GauntletError, require_gauntlet,
                                standard_gauntlet)
 from run_farm.ledger import RentalLedger
 from run_farm.protocols import HostSpec, LaunchSpec
@@ -98,6 +107,50 @@ REMOTE_ENV = {"XLA_FLAGS": "--xla_gpu_autotune_level=0"}
 #: RunPod's own resolver looks only at $RUNPOD_API_KEY and ~/.runpod_api_key;
 #: this machine keeps its keys in ~/tokens/, so the path is passed explicitly.
 RUNPOD_KEY = "~/tokens/.runpod_api_key"
+
+
+class LegEnvPinned:
+    """Every leg's command actually exports the variables this campaign needs.
+
+    run-farm's `RemoteEnvPinned` guards the same property but inspects
+    `ProviderExecutor.remote_env`, and this campaign runs on `FleetExecutor`, which
+    has no such attribute — passing it raises TypeError rather than pinning
+    anything. So the exports live in the leg command itself (build_command's `env`),
+    which is strictly more robust: a non-interactive `ssh host cmd` sources no
+    profile, so onstart's exports never reach the payload either way, and putting it
+    in the command means it appears in whatever records the command.
+
+    This checks the built commands rather than the intent that produced them, so it
+    fails if build_command stops honouring `env` — which is the failure that would
+    otherwise be silent, every leg running and producing plausible numbers with only
+    the reproducibility claim void.
+    """
+
+    name = "leg-env-pinned"
+
+    def __init__(self, legs, required, *, fatal=True):
+        self.legs, self.required, self.fatal = list(legs), dict(required), fatal
+
+    def __call__(self):
+        proves = ("every leg's command string exports these variables. Does NOT "
+                  "prove the box honours them or that the values are right for this "
+                  "engine -- only that what you meant to send is in what is sent.")
+        missing = []
+        for leg in self.legs:
+            for k, v in self.required.items():
+                if f"export {k}=" not in leg.command:
+                    missing.append(f"{leg.label}:{k}")
+                elif shlex.quote(str(v)) not in leg.command:
+                    missing.append(f"{leg.label}:{k}(wrong value)")
+        if missing:
+            return CheckResult(self.name, False,
+                               f"{len(missing)} leg/var pair(s) unpinned: "
+                               + ", ".join(missing[:4])
+                               + ("..." if len(missing) > 4 else ""),
+                               proves, fatal=self.fatal)
+        keys = ", ".join(sorted(self.required))
+        return CheckResult(self.name, True,
+                           f"all {len(self.legs)} leg(s) export {keys}", proves)
 
 
 def label_of(agrad, nlink):
@@ -364,7 +417,7 @@ def main():
             leg = FleetLeg(
                 label=lab,
                 command=build_command(relax_args(a, agrad, nlink, OUT_SUB),
-                                      commit, out=OUT_SUB),
+                                      commit, out=OUT_SUB, env=REMOTE_ENV),
                 ship=(), fetch=OUT_SUB, done_when=f"{OUT_SUB}/DONE",
                 resumable=True, reattachable=True)
             legs.append(leg)
@@ -438,18 +491,18 @@ def main():
                     min_reliability=0.97, min_cuda=12.2, min_gpu_frac=1.0)
     launch = LaunchSpec(image=IMG, onstart=ONSTART, disk_gb=32, label="nlink-ladder")
 
-    # The executor is built BEFORE the gauntlet, because RemoteEnvPinned inspects
-    # `ex.remote_env` — a check that cannot run against an executor that does not
-    # exist yet. It is not in standard_gauntlet and must be appended by hand.
+    # The env pin is checked on the LEG COMMANDS (LegEnvPinned), not on the
+    # executor: run-farm's RemoteEnvPinned reads ProviderExecutor.remote_env and
+    # FleetExecutor has no such parameter — passing it raises rather than pinning.
     ex = FleetExecutor(capped, launch, local_out_dir=str(outdir), host_spec=spec,
                        ready=SentinelReady(), ready_timeout=a.ready_timeout,
                        run_timeout=a.run_timeout, ledger=ledger,
-                       max_parallel=a.max_parallel, remote_env=dict(REMOTE_ENV))
+                       max_parallel=a.max_parallel)
 
     try:
         checks = standard_gauntlet(provider=capped, host_spec=spec, out_dir=outdir,
                                    legs=legs, payload=None)
-        checks.append(RemoteEnvPinned(ex, REMOTE_ENV))
+        checks.append(LegEnvPinned(legs, REMOTE_ENV))
         # skip= belongs to require_gauntlet, not standard_gauntlet: the former
         # REPORTS the bypass as SKIPPED, the latter deletes it from the report where
         # it reads exactly like a check that passed.
