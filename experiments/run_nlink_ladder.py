@@ -79,6 +79,7 @@ from run_farm.gauntlet import (CheckResult, GauntletError, require_gauntlet,
                                standard_gauntlet)
 from run_farm.ledger import RentalLedger
 from run_farm.protocols import HostSpec, LaunchSpec
+from run_farm.reap import reap
 from run_farm.runpod import RunPodProvider
 from run_farm.vast import VastProvider
 
@@ -531,17 +532,38 @@ def main():
         results = ex.run(legs)
     except BudgetExceeded as e:
         print(f"\nBUDGET CAP HIT: {e}")
-        print(f"  verify nothing is still billing: "
-              f"python -m run_farm.reap --ledger {ledger.path}")
         return 7
+    finally:
+        # REAP, don't just report. This used to print "<-- DESTROY THESE" and
+        # return, which is only a teardown if a human is reading stdout at the
+        # moment it scrolls past. On 2026-08-05 five legs finished AFTER the
+        # driver died and idled ~10 h for ~$16 with nobody watching, so the
+        # last thing this process does is destroy what it rented.
+        #
+        # In a `finally` because the paths that strand boxes are the abnormal
+        # ones: the budget cap above, a raise out of ex.run, a signal that
+        # unwinds rather than kills. The RAW provider, not `capped` -- the
+        # budget shim exposes no destroy() (see the gauntlet note above).
+        #
+        # Scoped to THIS ledger, never account-wide: leaked_ids() is
+        # rented/running minus destroyed, so a concurrent session's boxes are
+        # invisible to it. list_instances() alone cannot tell our orphan from
+        # someone else's live run, and reaping on that would be friendly fire.
+        rep = reap(provider, ledger=ledger.path, dry_run=False)
+        stranded = rep["destroyed"] + rep["gone"] + rep["failed"]
+        print(f"\nTEARDOWN: {len(stranded)} leaked instance(s) from this ledger"
+              + ("" if not stranded else
+                 f" -> destroyed {len(rep['destroyed'])}, "
+                 f"already gone {len(rep['gone'])}, "
+                 f"FAILED {len(rep['failed'])}"))
+        if rep["failed"]:
+            # The one case a human must act on: still billing, and we could not
+            # stop it. Name the boxes and the command, not just the count.
+            print(f"  STILL BILLING -- destroy manually: {rep['failed']}")
+            print(f"  python -m run_farm.reap --ledger {ledger.path} --yes")
 
     for r in results:
         print(f"  {r.label}: {r.status}" + (f"  ({r.detail})" if r.detail else ""))
-    live = provider.list_instances()
-    print(f"\nTEARDOWN CHECK: {len(live)} instance(s) still live"
-          + ("" if not live else "  <-- DESTROY THESE"))
-    for i in live:
-        print(f"  id={i.id} status={i.status} dph=${i.dph:.4f}/hr")
 
     return report(outdir, legs_meta, results, arms=arms, rungs=rungs)
 
