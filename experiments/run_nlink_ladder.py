@@ -249,7 +249,7 @@ def score_geometry(manifest, ref_det=None):
     return ok, ev
 
 
-def check_repro(outdir, results_by_label):
+def check_repro(outdir, results_by_label, arms=ARMS, rungs=RUNGS):
     """Score the wrapped arm against the catalog entries it must reproduce.
 
     A campaign that cannot reproduce what the repo already holds has not earned the
@@ -258,6 +258,8 @@ def check_repro(outdir, results_by_label):
     lines, all_ok = [], True
     cat = REPO / "src" / "soliton_playground" / "ehn_lab" / "particles"
     for nlink, name in sorted(REPRO.items()):
+        if nlink not in rungs or "wrapped" not in arms:
+            continue                       # partial run: not this campaign's claim
         lab = label_of("wrapped", nlink)
         man = load_manifest(outdir, lab)
         try:
@@ -280,7 +282,7 @@ def check_repro(outdir, results_by_label):
     return all_ok, lines
 
 
-def report(outdir, legs_meta, results=None):
+def report(outdir, legs_meta, results=None, arms=ARMS, rungs=RUNGS):
     """The campaign verdict: two meters per leg, arms side by side."""
     print("\n" + "=" * 78)
     print("N_LINK LADDER — pre-registered scoring (docs/NLINK_LADDER.md)")
@@ -289,8 +291,8 @@ def report(outdir, legs_meta, results=None):
     # wrapped first, so its determinant is available to pair the bilinear arm
     ref_det = {}
     table = {}
-    for agrad in ARMS:
-        for nlink in RUNGS:
+    for agrad in arms:
+        for nlink in rungs:
             lab = label_of(agrad, nlink)
             man = load_manifest(outdir, lab)
             geo, gev = score_geometry(man, ref_det.get(nlink))
@@ -307,8 +309,8 @@ def report(outdir, legs_meta, results=None):
     hdr = f"{'leg':22s} {'rc':>4s} {'det':>5s} {'ncomp':>5s} {'nseg':>6s} {'Q':>9s} {'elec':>8s}  geo  chg  BOUND"
     print(hdr)
     print("-" * len(hdr))
-    for agrad in ARMS:
-        for nlink in RUNGS:
+    for agrad in arms:
+        for nlink in rungs:
             lab = label_of(agrad, nlink)
             r = table[lab]
             f = lambda v: "-" if v is None else ("PASS" if v is True else "fail")
@@ -319,7 +321,7 @@ def report(outdir, legs_meta, results=None):
                   f"{'YES' if r['bound'] else 'no'}")
         print()
 
-    ok, lines = check_repro(outdir, table)
+    ok, lines = check_repro(outdir, table, arms, rungs)
     print("REPRODUCTION TEST (wrapped arm vs the catalog):")
     for ln in lines:
         print(ln)
@@ -328,8 +330,10 @@ def report(outdir, legs_meta, results=None):
               "repo already holds; no bilinear result from this run counts.")
         return 1
 
-    wfloor = [n for n in RUNGS if table[label_of('wrapped', n)]['bound']]
-    bfloor = [n for n in RUNGS if table[label_of('bilinear', n)]['bound']]
+    wfloor = [n for n in rungs if 'wrapped' in arms
+              and table[label_of('wrapped', n)]['bound']]
+    bfloor = [n for n in rungs if 'bilinear' in arms
+              and table[label_of('bilinear', n)]['bound']]
     print(f"\nBOUND rungs:  wrapped {wfloor or 'none'}   bilinear {bfloor or 'none'}")
     if not bfloor:
         print("  -> bilinear fails at EVERY rung including 4 and 5. Per "
@@ -419,12 +423,19 @@ def main():
                 command=build_command(relax_args(a, agrad, nlink, OUT_SUB),
                                       commit, out=OUT_SUB, env=REMOTE_ENV),
                 ship=(), fetch=OUT_SUB, done_when=f"{OUT_SUB}/DONE",
-                resumable=True, reattachable=True)
+                resumable=True, reattachable=True,
+                # Tee the box's stdout to <leg>/progress.log as it arrives. Without
+                # it a leg that dies before its first fetch interval takes its
+                # diagnosis with it: the on-box preflight prints WHY it failed and
+                # cats preflight.log, and all of that reached us as a truncated tail
+                # showing a pip warning. The evidence has to land locally while the
+                # box is still alive.
+                stream_progress=True)
             legs.append(leg)
             legs_meta[lab] = leg
 
     if a.score_only:
-        return report(outdir, legs_meta)
+        return report(outdir, legs_meta, arms=arms, rungs=rungs)
 
     print(f"N_LINK LADDER: {len(arms)} arm(s) x {len(rungs)} rung(s) = {len(legs)} legs")
     print(f"  SB-1: N={a.N} L={a.L} dx={a.L/a.N:.2f} R={a.R} (R/L={a.R/a.L:.3f}) "
@@ -532,7 +543,7 @@ def main():
     for i in live:
         print(f"  id={i.id} status={i.status} dph=${i.dph:.4f}/hr")
 
-    return report(outdir, legs_meta, results)
+    return report(outdir, legs_meta, results, arms=arms, rungs=rungs)
 
 
 if __name__ == "__main__":
