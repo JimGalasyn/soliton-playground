@@ -121,7 +121,15 @@ RUNGS = (1, 2, 3, 4, 5)
 #: Recovered from output/alpha_formation/README.md:24, whose control reproduces
 #: the archived entry to 0.06% on E and exactly on topology.
 REPRO_LEG = "repro_t23"
-REPRO_SEED = {"tp": 2, "tq": 3, "R": 33.792, "catalog": "trefoil_t23"}
+#: The catalog entry's OWN parameters, every one of them. Not just the seed: N, L
+#: and steps are pinned here too, because the check reproduces a measured state and
+#: a state measured at N=192/36k steps is not reproduced by running its seed at some
+#: other grid. Stage 1 hid this -- its campaign values happened to equal the
+#: catalog's -- and stage 2 (N=320, L=256) is exactly where it would have bitten:
+#: the check would have failed for a reason that has nothing to do with the
+#: pipeline, which is the same error Amendment 1 was written to correct.
+REPRO_SEED = {"tp": 2, "tq": 3, "R": 33.792, "N": 192, "L": 153.6,
+              "steps": 36000, "catalog": "trefoil_t23"}
 #: Tolerance on Q only. det and Lk are integers and are matched exactly; Q is a
 #: converged float, and 10% clears the 0.06% the alpha_formation control saw by
 #: enough that host-to-host variation is not read as a pipeline regression.
@@ -205,19 +213,21 @@ def repro_args(a, out):
     """The engine invocation for the pipeline check (Amendment 1).
 
     Deliberately NOT `relax_args` with a different geom: this leg reproduces a
-    held catalog state, so it takes that state's OWN R (33.792, i.e. 0.22*L) and
-    seed, not the ladder's frozen R=38.4. Sharing the ladder's radius would make
-    it a different run from the one the catalog recorded, and it would certify
-    nothing. Everything the catalog and the ladder agree on (N, L, C, alpha,
-    lam, kappa, ic, cramp, steps, agrad=wrapped) is shared.
+    held catalog state, so it takes that state's OWN seed AND its own grid --
+    R=33.792, N=192, L=153.6, 36000 steps -- rather than the campaign's. Running
+    the catalog's seed on some other grid is a different run from the one the
+    catalog recorded, and it would certify nothing. Only the parameters the
+    catalog and the campaign genuinely share (C, alpha, lam, kappa, ic, cramp,
+    agrad=wrapped) come from `a`.
     """
     return (
         f"-m jax_solitons.ehn.relax "
         f"--geom torus --tp {REPRO_SEED['tp']} --tq {REPRO_SEED['tq']} "
         f"--R {REPRO_SEED['R']} --core {a.core} "
-        f"--N {a.N} --L {a.L} --C {a.C} --U 50 --lam {a.lam} --kappa {a.kappa} "
+        f"--N {REPRO_SEED['N']} --L {REPRO_SEED['L']} "
+        f"--C {a.C} --U 50 --lam {a.lam} --kappa {a.kappa} "
         f"--alpha {a.alpha} --beta 2e-3 --cramp 8000 --agrad wrapped "
-        f"--ic screened --steps {a.steps} --samples {a.samples} "
+        f"--ic screened --steps {REPRO_SEED['steps']} --samples {a.samples} "
         f"--topo-every {a.topo_every} "
         f"--det-every {a.det_every} --det-timeout {a.det_timeout} "
         f"--out {out}")
