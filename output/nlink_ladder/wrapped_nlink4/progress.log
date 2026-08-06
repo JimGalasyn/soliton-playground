@@ -1,0 +1,5 @@
+Welcome to vast.ai. If authentication fails, try again after a few seconds, and double check your ssh key.
+Have fun!
+WARNING: Running pip as the 'root' user can result in broken permissions and conflicting behaviour with the system package manager, possibly rendering your system unusable. It is recommended to use a virtual environment instead: https://pip.pypa.io/warnings/venv. Use the --root-user-action option if you know what you are doing and want to suppress this warning.
+preflight OK: T(2,3) identifies as det 3 on this box
+LAUNCHED detached: a26a3b21-0989-4ab5-b526-468830d81a28 3169
