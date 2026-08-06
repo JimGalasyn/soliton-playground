@@ -378,8 +378,9 @@ def report(outdir, legs_meta, results=None, arms=ARMS, rungs=RUNGS):
             table[lab] = dict(geo=geo, chg=chg, bound=bound, rc=rc, **gev, **cev)
 
     hdr = f"{'leg':22s} {'rc':>4s} {'det':>5s} {'ncomp':>5s} {'nseg':>6s} {'Q':>9s} {'elec':>8s}  geo  chg  BOUND"
-    print(hdr)
-    print("-" * len(hdr))
+    if table:
+        print(hdr)
+        print("-" * len(hdr))
     for agrad in arms:
         for nlink in rungs:
             lab = label_of(agrad, nlink)
@@ -400,6 +401,16 @@ def report(outdir, legs_meta, results=None, arms=ARMS, rungs=RUNGS):
         print("  -> CAMPAIGN IS BROKEN. This box/commit does not reproduce a state "
               "this repo already holds; no result from this run counts.")
         return 1
+
+    if not table:
+        # --repro-only: the gate passed and there are no rungs to read. Say that
+        # and stop, rather than falling through to the floor logic below, which
+        # would report "bilinear fails at EVERY rung" from an empty arm and make
+        # a campaign verdict out of legs that were never run.
+        print("\n  -> pipeline check PASSED and no science legs were requested. "
+              "The box, this engine commit and these parameters reproduce "
+              f"{REPRO_SEED['catalog']}; the ladder is cleared to run.")
+        return 0
 
     wfloor = [n for n in rungs if 'wrapped' in arms
               and table[label_of('wrapped', n)]['bound']]
@@ -475,6 +486,11 @@ def main():
     ap.add_argument("--dry-run", action="store_true")
     ap.add_argument("--score-only", action="store_true",
                     help="re-score an existing output dir, rent nothing")
+    ap.add_argument("--repro-only", action="store_true",
+                    help="run ONLY the pipeline-check leg and stop. The gate is "
+                         "worth settling before the science legs are paid for: if "
+                         "the box cannot reproduce a held state, every rung it "
+                         "would have run is uninterpretable.")
     ap.add_argument("--no-repro", dest="repro", action="store_false",
                     help="omit the pipeline-check leg (Amendment 1). The gate then "
                          "reports UNMET and report() refuses to interpret any rung, "
@@ -485,6 +501,8 @@ def main():
 
     outdir = Path(a.out).expanduser()
     rungs, arms = tuple(a.rungs), tuple(a.arms)
+    if a.repro_only:
+        rungs, arms, a.repro = (), (), True
 
     commit = subprocess.run(["git", "rev-parse", "HEAD"],
                             cwd=str(REPO.parent / "jax-solitons"),
@@ -522,9 +540,12 @@ def main():
     if a.score_only:
         return report(outdir, legs_meta, arms=arms, rungs=rungs)
 
-    print(f"N_LINK LADDER: {len(arms)} arm(s) x {len(rungs)} rung(s)"
-          + (f" + 1 pipeline check" if a.repro else "")
-          + f" = {len(legs)} legs")
+    if a.repro_only:
+        print("N_LINK LADDER — PIPELINE CHECK ONLY: 1 leg, no science rungs")
+    else:
+        print(f"N_LINK LADDER: {len(arms)} arm(s) x {len(rungs)} rung(s)"
+              + (" + 1 pipeline check" if a.repro else "")
+              + f" = {len(legs)} legs")
     print(f"  SB-1: N={a.N} L={a.L} dx={a.L/a.N:.2f} R={a.R} (R/L={a.R/a.L:.3f}) "
           f"C={a.C}  steps={a.steps}")
     if a.repro:
