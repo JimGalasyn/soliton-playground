@@ -34,10 +34,20 @@ fi
 # directory` -- a compiler error wearing a shell error's clothes. Measured
 # 2026-08-05: every leg of the first N_link ladder attempt died this way.
 # Cheap and once per box, versus per-leg in the command.
+#
+# The GL libraries are for the same dependency and are just as non-optional.
+# pyknotid.spacecurves imports pyknotid.visualise unconditionally, which imports
+# vispy, which resolves a GL ES 2.0 backend AT IMPORT. On a headless CUDA container
+# that raises `OSError: GL ES 2.0 library not found` and the knot preflight exits
+# 90 -- so a knot-determinant run dies on a *graphics* library it never draws with.
+# Measured 2026-08-05 on the second ladder attempt, and only visible because
+# stream_progress teed the box's stdout home before the host was destroyed.
 apt-get update -qq >> "$L" 2>&1 || log "apt update warn"
-DEBIAN_FRONTEND=noninteractive apt-get install -y -qq build-essential \
-    >> "$L" 2>&1 || log "build-essential warn"
+DEBIAN_FRONTEND=noninteractive apt-get install -y -qq \
+    build-essential libgles2-mesa libegl1 libgl1 >> "$L" 2>&1 || log "apt install warn"
 command -v gcc >/dev/null && log "gcc $(gcc -dumpversion)" || log "NO GCC -- pyknotid will fail"
+ldconfig -p 2>/dev/null | grep -q libGLESv2 && log "libGLESv2 present" \
+    || log "NO libGLESv2 -- pyknotid import will fail"
 
 # 2. Miniconda + mamba (fast solver)
 curl -s -L "$MC" -o /tmp/mc.sh
