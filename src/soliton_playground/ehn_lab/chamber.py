@@ -26,8 +26,19 @@ def preflight(cfg: dict) -> list[str]:
     walls (empty = inside the envelope), each with the arithmetic that fired."""
     v = []
     em = el_mag(cfg["R_min"], cfg["C"])
-    th = THRESH[cfg["agrad"]]
-    if em >= th:
+    # THRESH is MEASURED per arm (el_probe_R.py, ±1%), so an arm nobody has probed
+    # has no threshold and must not borrow one. Reporting the gap as a violation is
+    # the honest reading: "we cannot certify this arm is inside its wall" is a
+    # reason to stop, and it keeps --force-envelope as the single deliberate
+    # override rather than letting an unmeasured arm sail through a check that
+    # silently did not run. Inventing a number here would be worse than either.
+    th = THRESH.get(cfg["agrad"])
+    if th is None:
+        v.append(f"expulsion: NO MEASURED THRESHOLD for agrad={cfg['agrad']!r} "
+                 f"(have {sorted(THRESH)}); el/mag(R={cfg['R_min']},"
+                 f"C={cfg['C']})={em:.0f} cannot be judged. Probe it with "
+                 f"el_probe_R.py, or proceed deliberately.")
+    elif em >= th:
         v.append(f"expulsion: el/mag(R={cfg['R_min']},C={cfg['C']})={em:.0f} "
                  f">= {th:.0f} ({cfg['agrad']} threshold)")
     am = alpha_max(cfg["dx"], cfg["lam"])

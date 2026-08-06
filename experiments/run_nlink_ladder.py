@@ -96,7 +96,18 @@ HERE = Path(__file__).resolve().parent
 REPO = HERE.parent
 OUT_SUB = "out_nlink"
 
+#: The PRE-REGISTERED campaign: two arms, and the default when --arms is omitted.
+#: Not widened when a third discretisation becomes runnable -- the ladder's design,
+#: its predicted-outcome table and its falsifier list are all stated over these two,
+#: so silently adding a third would change what "the campaign" means after the fact.
 ARMS = ("wrapped", "bilinear")
+
+#: What --arms will ACCEPT. `naive` is the third candidate NLINK_LADDER.md names for
+#: when bilinear fails to reproduce the floor (per-site arctan2 then an unwrapped
+#: central difference). It is selectable so it can be run and scored on the same
+#: rungs and meters, and excluded from ARMS so running it is a deliberate act.
+SELECTABLE_ARMS = ("wrapped", "bilinear", "naive")
+
 RUNGS = (1, 2, 3, 4, 5)
 
 #: The pipeline check (Amendment 1, 2026-08-06). One leg on the CATALOG's seed and
@@ -412,11 +423,21 @@ def report(outdir, legs_meta, results=None, arms=ARMS, rungs=RUNGS):
               f"{REPRO_SEED['catalog']}; the ladder is cleared to run.")
         return 0
 
-    wfloor = [n for n in rungs if 'wrapped' in arms
-              and table[label_of('wrapped', n)]['bound']]
-    bfloor = [n for n in rungs if 'bilinear' in arms
-              and table[label_of('bilinear', n)]['bound']]
-    print(f"\nBOUND rungs:  wrapped {wfloor or 'none'}   bilinear {bfloor or 'none'}")
+    floors = {ag: [n for n in rungs if table[label_of(ag, n)]['bound']]
+              for ag in arms}
+    print("\nBOUND rungs:  "
+          + "   ".join(f"{ag} {floors[ag] or 'none'}" for ag in arms))
+    if 'bilinear' not in arms or 'wrapped' not in arms:
+        # The verdict logic below is stated over the pre-registered pair. With any
+        # other arm set (a naive-only run, a single-arm re-run) there is no
+        # pre-registered pattern to match, and printing one of these three verdicts
+        # anyway would attach the ladder's authority to a comparison it never made.
+        print("  -> partial arm set: the pre-registered verdict is stated over "
+              f"{list(ARMS)} and is not evaluated here. Rungs above are scored on "
+              "the same two meters; read them as measurements, not as a campaign "
+              "outcome.")
+        return 0
+    wfloor, bfloor = floors['wrapped'], floors['bilinear']
     if not bfloor:
         print("  -> bilinear fails at EVERY rung including 4 and 5. Per "
               "NLINK_LADDER.md this does NOT support the hypothesis: it is what an "
@@ -452,7 +473,10 @@ def main():
     ap.add_argument("--det-every", type=int, default=6)
     ap.add_argument("--det-timeout", type=float, default=180.0)
     ap.add_argument("--rungs", type=int, nargs="+", default=list(RUNGS))
-    ap.add_argument("--arms", nargs="+", default=list(ARMS), choices=list(ARMS))
+    ap.add_argument("--arms", nargs="+", default=list(ARMS),
+                    choices=list(SELECTABLE_ARMS),
+                    help="default is the pre-registered pair; 'naive' is the third "
+                         "discretisation and must be asked for explicitly")
     ap.add_argument("--provider", choices=("runpod", "vast"), default="runpod",
                     help="RunPod by default: these legs are ~1.2 h each and Vast's "
                          "spot pool has already cost this project a host_failed "
