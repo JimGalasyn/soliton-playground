@@ -500,8 +500,13 @@ def main():
                        max_parallel=a.max_parallel)
 
     try:
-        checks = standard_gauntlet(provider=capped, host_spec=spec, out_dir=outdir,
-                                   legs=legs, payload=None)
+        # The RAW provider, not `capped`. CappedProvider exposes only offers/rent
+        # (its rent() is a context manager that destroys on exit, so nothing calls
+        # destroy through it), and ProviderCapable asked the wrapper whether it
+        # could destroy — it cannot, and said so. Checking the wrapper tests the
+        # budget shim's surface, not the cloud's.
+        checks = standard_gauntlet(provider=provider, host_spec=spec,
+                                   out_dir=outdir, legs=legs, payload=None)
         checks.append(LegEnvPinned(legs, REMOTE_ENV))
         # skip= belongs to require_gauntlet, not standard_gauntlet: the former
         # REPORTS the bypass as SKIPPED, the latter deletes it from the report where
