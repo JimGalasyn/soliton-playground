@@ -669,6 +669,13 @@ def main():
                  f" -> destroyed {len(rep['destroyed'])}, "
                  f"already gone {len(rep['gone'])}, "
                  f"FAILED {len(rep['failed'])}"))
+        if rep.get("closed"):
+            # Rows a previous run left open. Worth printing even though nothing was
+            # billing: an unclosed row bills FOREVER against the budget cap, so this
+            # line is the difference between the next campaign starting and it
+            # refusing to rent for reasons nobody can see.
+            print(f"  closed {len(rep['closed'])} stale ledger row(s): "
+                  f"{rep['closed']}")
         if rep["failed"]:
             # The one case a human must act on: still billing, and we could not
             # stop it. Name the boxes and the command, not just the count.
