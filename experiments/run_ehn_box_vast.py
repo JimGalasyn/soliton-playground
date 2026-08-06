@@ -74,8 +74,14 @@ def relax_args(a, out):
         f"--save-every {a.save_every} --out {out}")
 
 
-def build_command(a, engine_commit):
+def build_command(engine_argv, engine_commit, out="out_ehn_box"):
     """A RE-ENTERABLE leg: launch the relaxation detached, then wait on the marker.
+
+    `engine_argv` is the engine invocation (see relax_args) and `out` its output
+    directory, both parameters rather than derived from this script's argparse, so
+    a multi-leg campaign can reuse this contract instead of copying it. The copy is
+    what would drift: every branch below was paid for by a specific failure, and a
+    second transcription would not inherit the next fix.
 
     WHY NOT JUST RUN IT. The old shape ran the engine as the ssh command's own
     child, so the relaxation died with the channel. On 2026-08-03 `ssh5.vast.ai`
@@ -104,7 +110,6 @@ def build_command(a, engine_commit):
     exit code the FLEET sees is now the wait loop's, which is what makes run-farm's
     255-means-transport inference sound -- the payload can no longer produce a 255.
     """
-    out = "out_ehn_box"
     py = "/workspace/jaxenv/bin/python"
     # A heredoc rather than a nested-quote one-liner: this needs `if`, a loop and a
     # subshell, and the version of it that fits on one line is unreadable and was
@@ -175,7 +180,7 @@ def build_command(a, engine_commit):
         f'      rm -f "$OUT/field.npz"\n'
         f'    fi\n'
         f'  fi\n'
-        f'  setsid nohup bash -c "$PY {relax_args(a, out)} $RESUME ; '
+        f'  setsid nohup bash -c "$PY {engine_argv} $RESUME ; '
         f'echo \\"exit=\\$?\\" > $OUT/DONE" > "$OUT/run.log" 2>&1 < /dev/null &\n'
         f'  echo "$BOOT $!" > "$OUT/PID"\n'
         f'  echo "LAUNCHED detached: $(cat $OUT/PID)"\n'
@@ -368,7 +373,8 @@ def main():
     # SAME live box instead of filing a transport failure as a failed job. Without
     # the re-enterable script this flag would start a second relaxation racing the
     # first; the two go together and neither is useful alone.
-    leg = FleetLeg(label=label, command=build_command(a, commit),
+    leg = FleetLeg(label=label,
+                   command=build_command(relax_args(a, "out_ehn_box"), commit),
                    ship=(), fetch="out_ehn_box",
                    done_when="out_ehn_box/DONE", resumable=True,
                    reattachable=True)
