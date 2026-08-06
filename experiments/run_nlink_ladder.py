@@ -518,6 +518,19 @@ def main():
                     help="N=192 fits comfortably; this is NOT the N=320 leg that "
                          "needed A100-class")
     ap.add_argument("--max-dph", type=float, default=0.40)
+    ap.add_argument("--min-gpu-frac", type=float, default=1.0,
+                    help="1.0 = whole box, no GPU-sharing tenants (the anti-"
+                         "contention gate stage 1 ran under). Achievable on "
+                         "single-GPU 4090 hosts and NOT on A100-class ones, which "
+                         "are multi-GPU servers where renting one GPU can never be "
+                         "the whole machine -- so 1.0 silently excludes the entire "
+                         "A100 market. Lower it deliberately for those, and read a "
+                         "slow leg as possible co-tenant contention.")
+    ap.add_argument("--min-gpu-ram-mb", type=int, default=0,
+                    help="VRAM floor in MB. Needed above N=192: a gpu_name is not "
+                         "a memory spec (A100 SXM4 ships 40GB AND 80GB under one "
+                         "name, cheapest-first), and an N=320 leg OOMed on 24GB "
+                         "needing 9.77GiB more. 81920 pins the 80GB card.")
     ap.add_argument("--cap-usd", type=float, default=12.00,
                     help="ENFORCED total for this ledger. Expected spend is ~11.8 "
                          "gpu-h ~= $4.15; the worst case the estimator prints "
@@ -663,7 +676,9 @@ def main():
         provider = VastProvider(ledger=ledger)
     capped = CappedProvider(provider, cap_usd=a.cap_usd, ledger=ledger)
     spec = HostSpec(gpu_name=a.gpu, num_gpus=1, max_dph=a.max_dph,
-                    min_reliability=0.97, min_cuda=12.2, min_gpu_frac=1.0)
+                    min_reliability=0.97, min_cuda=12.2,
+                    min_gpu_frac=a.min_gpu_frac,
+                    min_gpu_ram_mb=a.min_gpu_ram_mb)
     launch = LaunchSpec(image=IMG, onstart=ONSTART, disk_gb=32, label="nlink-ladder")
 
     # The env pin is checked on the LEG COMMANDS (LegEnvPinned), not on the
