@@ -27,6 +27,18 @@ if [ "${SPD%.*}" -lt 2000000 ]; then
     touch /tmp/worker-bad-network; log "BAD NET (conda cdn < 2MB/s)"; exit 1
 fi
 
+# 1b. A C toolchain. The nvidia/cuda *runtime* image ships none, and pyknotid
+# pulls `planarity` -- a C extension with no manylinux wheel, so pip builds it from
+# source. Without gcc that build fails, the `&&` chain in the leg command breaks
+# before `cat > leg.sh`, and the leg dies as `rc=127: bash: leg.sh: No such file or
+# directory` -- a compiler error wearing a shell error's clothes. Measured
+# 2026-08-05: every leg of the first N_link ladder attempt died this way.
+# Cheap and once per box, versus per-leg in the command.
+apt-get update -qq >> "$L" 2>&1 || log "apt update warn"
+DEBIAN_FRONTEND=noninteractive apt-get install -y -qq build-essential \
+    >> "$L" 2>&1 || log "build-essential warn"
+command -v gcc >/dev/null && log "gcc $(gcc -dumpversion)" || log "NO GCC -- pyknotid will fail"
+
 # 2. Miniconda + mamba (fast solver)
 curl -s -L "$MC" -o /tmp/mc.sh
 bash /tmp/mc.sh -b -p /workspace/conda >> "$L" 2>&1
