@@ -395,8 +395,20 @@ def report(outdir, legs_meta, results=None, arms=ARMS, rungs=RUNGS):
             meta = legs_meta.get(lab)
             if meta is not None:
                 rc = remote_exit(outdir, meta)
+            # VOID a leg the box did not finish. `remote_exit`'s own docstring
+            # warns that None is NO EVIDENCE and never a pass, and scoring a
+            # nonzero rc is the same mistake one step later: a leg that dies early
+            # still has its n=0 sample in the manifest, and n=0 carries the SEED's
+            # charge, which passes |Q| >= 0.5*nlink by construction. Measured
+            # 2026-08-06: an N=320 probe OOMed at the first relax step and scored
+            # `chg PASS` off a trajectory one sample long. A dead leg must
+            # contribute nothing to either meter, not a free pass on one of them.
+            void = rc != 0
+            if void:
+                geo = chg = None
             bound = (geo is True) and (chg is True)
-            table[lab] = dict(geo=geo, chg=chg, bound=bound, rc=rc, **gev, **cev)
+            table[lab] = dict(geo=geo, chg=chg, bound=bound, rc=rc, void=void,
+                              **gev, **cev)
 
     hdr = f"{'leg':22s} {'rc':>4s} {'det':>5s} {'ncomp':>5s} {'nseg':>6s} {'Q':>9s} {'elec':>8s}  geo  chg  BOUND"
     if table:
@@ -411,8 +423,12 @@ def report(outdir, legs_meta, results=None, arms=ARMS, rungs=RUNGS):
                   f"{str(r.get('ncomp')):>5s} {str(r.get('nseg1')):>6s} "
                   f"{str(r.get('Q')):>9s} {str(r.get('elec')):>8s}  "
                   f"{f(r['geo']):4s} {f(r['chg']):4s} "
-                  f"{'YES' if r['bound'] else 'no'}")
+                  + ("VOID" if r['void'] else ("YES" if r['bound'] else "no")))
         print()
+    if any(r['void'] for r in table.values()):
+        print("  VOID = the box did not finish this leg (rc != 0, or no marker). "
+              "Its meters are not scored: an early death still files an n=0 sample, "
+              "and n=0 carries the seed's charge.\n")
 
     ok, lines = check_repro(outdir, table, arms, rungs)
     print("PIPELINE CHECK (catalog seed, catalog parameters — Amendment 1):")
