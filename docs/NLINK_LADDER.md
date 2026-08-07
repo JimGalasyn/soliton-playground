@@ -627,3 +627,60 @@ From their captions, and directly comparable to a run at their box:
 
 Within a linking number the rings solution is the lower-energy one, and they note
 energy grows with N_link because the electric charge on the phi1 string grows.
+
+---
+
+# Result — 2026-08-07: stage 2 rerun off-lattice. Both rungs BOUND.
+
+The wrapped arm re-run at N=320, L=256 with **R = 64.4** instead of 64 -- one half
+cell, moving the phi2 ring off the lattice. Everything else identical: same box,
+spacing, lambda/kappa/C, steps, agrad, engine commit.
+
+    leg              rc  det ncomp  nseg       Q      elec   geo   chg   BOUND
+    wrapped_nlink3    0    1     3  1164  -2.4996   882.8  PASS  PASS   YES
+    wrapped_nlink4    0    1     4  1330  -3.6082  1225.9  PASS  PASS   YES
+
+    Lk(phi1,phi2) = -3.000 and -4.000 exactly.  Pipeline CERTIFIED (4th time).
+    E = 4532.1 and 5739.5.  Wall 7400 s and 7114 s.  Cost $4.59.
+
+**The lattice-coincidence diagnosis is confirmed in production.** At R = 64 both
+legs NaNed by step 1000; at R = 64.4 both run 36000 steps to a bound state. The
+only change is whether a lattice site lands exactly on the seed ring.
+
+## The comparison against EHN, at their own parameters
+
+    wrapped_nlink4:  E = 5739.5   vs EHN's 6.0e3   ->  ratio 0.957
+
+**Within 4.3%**, at their grid, their box, their spacing, their lambda/kappa/C, and
+their rings construction (Amendment 2: their Fig. 1 and Fig. 2-leftmost solutions
+are rings, which is what build_ic(geom="rings") seeds). Stage 1 at our smaller box
+came in ~25% LOW against the same benchmarks, so moving to their box closed most of
+the gap -- the direction that says the earlier discrepancy was the box, which is
+what EHN themselves suspected.
+
+**And N_link = 3 is BOUND at their parameters**, E = 4532.1, both meters passing,
+Lk exactly -3.000 -- where they report no solution. Together with the separate
+finding that our catalog states satisfy EHN's own convergence criterion Eq. (14) by
+2-3 orders of magnitude, the "we used a laxer standard" objection is closed from
+both directions: their bar, their box.
+
+Read this as the "more detailed study" their own text calls for, NOT as a
+contradiction. Their claim is a hedged non-detection (Amendment 2 section 1); a
+detection does not contradict it.
+
+## Deviations to record
+
+- **R/L = 0.2516, not the frozen 0.25.** The half-cell nudge is a deliberate
+  departure from a pre-registered parameter, forced by the IC bug. It is 0.6% in R
+  and ~1.2% in el/mag against a 3x margin, and each leg is scored on its own
+  meters rather than against the other arm, so it does not affect the verdicts.
+  It does mean this wrapped arm is not at byte-identical geometry to the stage-2
+  bilinear legs (R = 64), which is why the two are not presented as a paired
+  comparison.
+- **wrapped is INSIDE its expulsion wall here** -- el_mag(64.4, 400) = 111 against
+  a threshold of 147. First time in this campaign a science arm needed no
+  `--force-envelope`. bilinear is still ~3x outside at 112 vs 37; only N = 400
+  would clear it.
+- |Q|/nlink is 0.83 and 0.90 here against 0.91 and 0.95 at N = 192, so the wrapped
+  arm sheds slightly more charge at the larger box. Both remain well clear of the
+  0.5*nlink gate.

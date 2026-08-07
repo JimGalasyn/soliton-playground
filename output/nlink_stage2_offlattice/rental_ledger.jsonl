@@ -1,0 +1,14 @@
+{"dph": 0.733388888888889, "event": "rented", "geo": "Japan, JP", "gpu": "A100 SXM4", "instance_id": 47102153, "offer_id": "45652454", "provider": "vast", "reliability": 0.9982218, "ts": 1786126505.228}
+{"dph": 0.9342592592592591, "event": "rented", "geo": "Taiwan, TW", "gpu": "A100 SXM4", "instance_id": 47102155, "offer_id": "36994174", "provider": "vast", "reliability": 0.998377, "ts": 1786126508.431}
+{"dph": 1.0550925925925927, "event": "rented", "geo": "Sweden, SE", "gpu": "A100 SXM4", "instance_id": 47102157, "offer_id": "21050980", "provider": "vast", "reliability": 0.994621, "ts": 1786126509.298}
+{"event": "running", "instance_id": 47102157, "offer_id": "21050980", "provider": "vast", "provision_s": 43.0, "ts": 1786126551.61}
+{"event": "running", "instance_id": 47102155, "offer_id": "36994174", "provider": "vast", "provision_s": 88.8, "ts": 1786126595.406}
+{"event": "running", "instance_id": 47102153, "offer_id": "45652454", "provider": "vast", "provision_s": 96.2, "ts": 1786126600.72}
+{"billed_s": 207.1, "destroyed": true, "est_cost_usd": 0.0422, "event": "destroyed", "instance_id": 47102153, "offer_id": "45652454", "outcome": "host_failed", "provider": "vast", "reason": "onstart net-probe bailed (throttled host)", "ts": 1786126712.859, "verify": "gone"}
+{"dph": 1.0683333333333334, "event": "rented", "geo": "Czechia, CZ", "gpu": "A100 SXM4", "instance_id": 47102436, "offer_id": "29019332", "provider": "vast", "reliability": 0.9899364, "ts": 1786126713.609}
+{"billed_s": 74.8, "destroyed": true, "est_cost_usd": 0.0222, "event": "destroyed", "instance_id": 47102436, "offer_id": "29019332", "outcome": "host_failed", "provider": "vast", "reason": "host probe failed (instance 47102436): Error response from daemon: failed to create task for container: failed to create shim task: OCI runtime create failed: unable to retrieve OCI runtime error (op", "ts": 1786126789.412, "verify": "gone"}
+{"dph": 0.733388888888889, "event": "rented", "geo": "Japan, JP", "gpu": "A100 SXM4", "instance_id": 47102509, "offer_id": "45652449", "provider": "vast", "reliability": 0.9982218, "ts": 1786126791.243}
+{"event": "running", "instance_id": 47102509, "offer_id": "45652449", "provider": "vast", "provision_s": 23.9, "ts": 1786126814.073}
+{"billed_s": 1651.5, "destroyed": true, "est_cost_usd": 0.3364, "event": "destroyed", "instance_id": 47102509, "offer_id": "45652449", "outcome": "ok", "provider": "vast", "reason": "", "ts": 1786128442.737, "verify": "gone"}
+{"billed_s": 7412.5, "destroyed": true, "est_cost_usd": 2.1725, "event": "destroyed", "instance_id": 47102157, "offer_id": "21050980", "outcome": "ok", "provider": "vast", "reason": "", "ts": 1786133922.425, "verify": "gone"}
+{"billed_s": 7765.8, "destroyed": true, "est_cost_usd": 2.0154, "event": "destroyed", "instance_id": 47102155, "offer_id": "36994174", "outcome": "ok", "provider": "vast", "reason": "", "ts": 1786134273.724, "verify": "gone"}
