@@ -1,0 +1,14 @@
+EHN FAITHFUL relaxer  N=320 L=256.0 dx=0.800 nlink=4 C=400.0 α=0.0001 β=0.002 U=50.0 q1=1.0 q2=0.0 ic=screened agrad=wrapped  (EHN E≈6000.0)
+  n     0: Q=-3.993 link=-100% C=0 E= 15363.5 (g1=1495 g2=8975 mag=8247.2 el=0.0 sky=0 pot=-3354)
+        topo: Lk(φ1,φ2)=-3.97 nseg1=1520 nseg2=918
+/workspace/jaxenv/lib/python3.14/site-packages/jax_solitons/knots.py:53: FutureWarning: In the future `np.object` will be defined as the corresponding NumPy scalar.
+  if not hasattr(np, a):
+Could not import cythonised chelpers, using Python alternative. This will give the same result, but is slower.
+        det(φ1): [(422, 1), (320, 1), (320, 1), (320, 1)]
+  n  1000: Q=+nan link=+nan% C=50 E=     nan (g1=nan g2=nan mag=nan el=nan sky=0 pot=nan)
+/workspace/jaxenv/lib/python3.14/site-packages/jax_solitons/vortex_topology.py:38: RuntimeWarning: invalid value encountered in cast
+  return np.rint(w / (2.0 * np.pi)).astype(np.int8)
+        topo: Lk(φ1,φ2)=None nseg1=0 nseg2=0
+  BLEW UP
+  determinant: SKIPPED — final E is not finite, so there is no knot to identify (recording null rather than a manufactured det=1)
+  FINAL E=nan (EHN≈6000.0) link=+nan% Lk(φ1,φ2)=nan det(φ1)=None mag=nan el=nan  (244s)

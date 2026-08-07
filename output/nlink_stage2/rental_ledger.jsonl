@@ -1,0 +1,27 @@
+{"dph": 1.19, "event": "rented", "geo": "COMMUNITY", "gpu": "A100 PCIe", "instance_id": "pt7qmicyizp5qg", "offer_id": "NVIDIA A100 80GB PCIe", "provider": "runpod", "ts": 1786047632.558}
+{"dph": 1.19, "event": "rented", "geo": "COMMUNITY", "gpu": "A100 PCIe", "instance_id": "ag4zb2eq5wy944", "offer_id": "NVIDIA A100 80GB PCIe", "provider": "runpod", "ts": 1786047634.957}
+{"dph": 1.19, "event": "rented", "geo": "COMMUNITY", "gpu": "A100 PCIe", "instance_id": "r7uk27go1jqytv", "offer_id": "NVIDIA A100 80GB PCIe", "provider": "runpod", "ts": 1786047636.337}
+{"dph": 1.19, "event": "rented", "geo": "COMMUNITY", "gpu": "A100 PCIe", "instance_id": "6t14fjwipt8l6k", "offer_id": "NVIDIA A100 80GB PCIe", "provider": "runpod", "ts": 1786047638.518}
+{"event": "running", "instance_id": "ag4zb2eq5wy944", "offer_id": "NVIDIA A100 80GB PCIe", "provider": "runpod", "provision_s": 36.0, "ts": 1786047668.948}
+{"event": "running", "instance_id": "r7uk27go1jqytv", "offer_id": "NVIDIA A100 80GB PCIe", "provider": "runpod", "provision_s": 121.7, "ts": 1786047756.579}
+{"event": "running", "instance_id": "pt7qmicyizp5qg", "offer_id": "NVIDIA A100 80GB PCIe", "provider": "runpod", "provision_s": 132.7, "ts": 1786047763.203}
+{"event": "running", "instance_id": "6t14fjwipt8l6k", "offer_id": "NVIDIA A100 80GB PCIe", "provider": "runpod", "provision_s": 143.1, "ts": 1786047780.061}
+{"billed_s": 1849.0, "destroyed": true, "est_cost_usd": 0.6112, "event": "destroyed", "instance_id": "ag4zb2eq5wy944", "offer_id": "NVIDIA A100 80GB PCIe", "outcome": "host_failed", "provider": "runpod", "reason": "worker not ready on ag4zb2eq5wy944 within 1800s", "ts": 1786049483.764, "verify": "gone"}
+{"billed_s": 1934.3, "destroyed": true, "est_cost_usd": 0.6394, "event": "destroyed", "instance_id": "r7uk27go1jqytv", "offer_id": "NVIDIA A100 80GB PCIe", "outcome": "host_failed", "provider": "runpod", "reason": "worker not ready on r7uk27go1jqytv within 1800s", "ts": 1786049570.854, "verify": "gone"}
+{"billed_s": 1946.1, "destroyed": true, "est_cost_usd": 0.6433, "event": "destroyed", "instance_id": "pt7qmicyizp5qg", "offer_id": "NVIDIA A100 80GB PCIe", "outcome": "host_failed", "provider": "runpod", "reason": "worker not ready on pt7qmicyizp5qg within 1800s", "ts": 1786049578.251, "verify": "gone"}
+{"billed_s": 1946.8, "destroyed": true, "est_cost_usd": 0.6435, "event": "destroyed", "instance_id": "6t14fjwipt8l6k", "offer_id": "NVIDIA A100 80GB PCIe", "outcome": "host_failed", "provider": "runpod", "reason": "worker not ready on 6t14fjwipt8l6k within 1800s", "ts": 1786049585.437, "verify": "gone"}
+{"dph": 1.0280555555555555, "event": "rented", "geo": "France, FR", "gpu": "A100 SXM4", "instance_id": 47016749, "offer_id": "43131366", "provider": "vast", "reliability": 0.9844287, "ts": 1786050089.461}
+{"dph": 1.0416666666666667, "event": "rented", "geo": "Czechia, CZ", "gpu": "A100 SXM4", "instance_id": 47016755, "offer_id": "29019291", "provider": "vast", "reliability": 0.9985089, "ts": 1786050091.444}
+{"dph": 1.0433611111111112, "event": "rented", "geo": "South Korea, KR", "gpu": "A100 SXM4", "instance_id": 47016757, "offer_id": "46556680", "provider": "vast", "reliability": 0.9776503, "ts": 1786050093.585}
+{"dph": 0.9342592592592591, "event": "rented", "geo": "Taiwan, TW", "gpu": "A100 SXM4", "instance_id": 47016759, "offer_id": "36994174", "provider": "vast", "reliability": 0.9983839, "ts": 1786050096.086}
+{"dph": 1.0416666666666667, "event": "rented", "geo": "Czechia, CZ", "gpu": "A100 SXM4", "instance_id": 47016763, "offer_id": "29019285", "provider": "vast", "reliability": 0.997256, "ts": 1786050098.176}
+{"event": "running", "instance_id": 47016749, "offer_id": "43131366", "provider": "vast", "provision_s": 76.2, "ts": 1786050164.825}
+{"event": "running", "instance_id": 47016755, "offer_id": "29019291", "provider": "vast", "provision_s": 86.7, "ts": 1786050177.263}
+{"event": "running", "instance_id": 47016757, "offer_id": "46556680", "provider": "vast", "provision_s": 108.7, "ts": 1786050201.311}
+{"event": "running", "instance_id": 47016759, "offer_id": "36994174", "provider": "vast", "provision_s": 108.3, "ts": 1786050203.381}
+{"event": "running", "instance_id": 47016763, "offer_id": "29019285", "provider": "vast", "provision_s": 108.4, "ts": 1786050205.011}
+{"billed_s": 550.1, "destroyed": true, "est_cost_usd": 0.1592, "event": "destroyed", "instance_id": 47016755, "offer_id": "29019291", "outcome": "ok", "provider": "vast", "reason": "", "ts": 1786050642.222, "verify": "gone"}
+{"billed_s": 636.1, "destroyed": true, "est_cost_usd": 0.1843, "event": "destroyed", "instance_id": 47016757, "offer_id": "46556680", "outcome": "ok", "provider": "vast", "reason": "", "ts": 1786050730.285, "verify": "gone"}
+{"billed_s": 1690.8, "destroyed": true, "est_cost_usd": 0.4828, "event": "destroyed", "instance_id": 47016749, "offer_id": "43131366", "outcome": "ok", "provider": "vast", "reason": "", "ts": 1786051780.868, "verify": "gone"}
+{"billed_s": 6557.5, "destroyed": true, "est_cost_usd": 1.8974, "event": "destroyed", "instance_id": 47016763, "offer_id": "29019285", "outcome": "ok", "provider": "vast", "reason": "", "ts": 1786056655.486, "verify": "gone"}
+{"billed_s": 6827.1, "destroyed": true, "est_cost_usd": 1.7718, "event": "destroyed", "instance_id": 47016759, "offer_id": "36994174", "outcome": "ok", "provider": "vast", "reason": "", "ts": 1786056923.658, "verify": "gone"}

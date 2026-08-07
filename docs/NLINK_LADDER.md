@@ -443,3 +443,60 @@ the bilinear confound -- and per the note above, running it is disambiguation, n
 the confirmation it was pre-registered as.
 
 Ledger after stage 1: $19.46.
+
+---
+
+# Result — 2026-08-07: stage 2 is VOID, and why
+
+Run at N=320, L=256, R=64 on A100 80GB. Pipeline re-CERTIFIED on that hardware
+(det [[978,3]], Lk -3.0, Q -2.867 vs the archived -2.868) -- a real check, since
+this was a new provider, a new GPU class and a different engine commit than the
+one stage 1 certified.
+
+    leg              agrad     e_finite  last_n   Q
+    bilinear_nlink3  bilinear  True       36000   -1.1614
+    bilinear_nlink4  bilinear  True       36000   -1.5697
+    wrapped_nlink3   wrapped   False       1000   nan
+    wrapped_nlink4   wrapped   False       1000   nan
+
+**The wrapped arm is VOID, not failed.** It hit a degenerate initial condition, not
+an instability: at N=320 a lattice site lies EXACTLY on the phi2 seed ring, so
+`tanh(d/core)` is exactly 0 there and |phi2| = 0 at a grid point, leaving
+`a = arg phi2` undefined precisely where the wrapped axion gradient reads it. Fixed
+and guarded in jax-solitons #97; that geometry is now refused at IC build.
+
+Whether it happens is decided by whether R/dx is an integer in BINARY floating
+point -- L=38.4 and L=38.400000000000006 are the same box to 15 digits and have
+opposite fates. Stage 1's N=192 has no such coincidence, which is why it ran clean;
+that was luck, not design.
+
+**Without a wrapped arm there is no reference**, since the geometric meter is
+self-paired against wrapped's determinant. So stage 2 answers nothing about the
+floor and must not be read as a null result.
+
+## What the bilinear legs DO establish
+
+They ran clean and are real, because the same coincidence is harmless to bilinear
+-- it computes Im(conj(phi2) d phi2)/(|phi2|^2 + eps_a), where the zero is
+regularised. Identical geometry, opposite outcomes by arm, which is also the
+cleanest evidence for the mechanism above.
+
+    rung   |Q|/nlink at N=192    |Q|/nlink at N=320
+      3          0.335                 0.387
+      4          0.398                 0.392
+
+**bilinear is grid-independent across a 4.6x volume change.** That argues against
+its charge suppression being a resolution artefact, and it is the one physics
+result stage 2 delivered.
+
+## Still true, and still not settled
+
+Stage 2 does NOT put bilinear inside its expulsion wall: el/mag(R=64, C=400) = 112
+against a bilinear threshold of 37, so it runs ~3x outside (down from 8.4x at stage
+1, not inside). Only R >= 111.5 -- L >= 319, N=400 -- would clear it. The confound
+stage 1 could not resolve is still unresolved.
+
+## To redo
+
+Re-run the wrapped arm with R nudged off the lattice (R += dx/2). ~2 A100 legs,
+~$3.50. The guard means the same failure can no longer happen silently.
