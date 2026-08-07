@@ -396,13 +396,32 @@ gradient -- it is precisely the term that cancels the smooth winding. On the rea
 IC the sheet is 194 of 110592 cells (0.18%); delete it and naive's sum goes
 0.0000 -> 18.0956 against wrapped's 20.1062.
 
-So rho = B.grad(a) has ZERO NET under naive while carrying the LARGEST |rho| of
-the three modes. The L3 coupling contributes nothing, nothing acts on the
-topology, and the run preserves its seed charge exactly. **The near-perfect
-integer Q is an absence of force, not a lock.**
+So rho = B.grad(a) has ZERO NET under naive -- identically, for uniform B and for
+any divergence-free B -- while carrying the LARGEST |rho| of the three modes.
 
-The trajectories say the same thing independently. On the IDENTICAL initial
-condition at n = 0:
+**What that establishes, narrowly: rho cannot represent a winding-derived charge
+under naive.** EHN's floor is a statement about integral-rho being LOCKED to
+N_link, so an arm in which integral-rho is identically 0 whatever the field does
+cannot exhibit the mechanism this campaign exists to test. That is what voids it.
+
+CORRECTION (2026-08-07, from review of jax-solitons #96). An earlier version of
+this section said "the L3 coupling contributes nothing, nothing acts on the
+topology" and called the integer Q "an absence of force". That does not hold. The
+engine forms `eelec = 0.5*C*sum(rho*s)` with a spatially varying A0, and
+sum(rho) = 0 does NOT imply sum(rho*s) = 0. Measured on this IC with a smooth A0
+and B = curl A, naive's eelec is -152 against wrapped's -45965 -- small, but not
+zero; with a RANDOM A0 it is the LARGEST of the three. The magnitude depends
+entirely on how rho's cancelling spikes correlate with A0.
+
+So why the naive arm's Q sits at its seed value to 0.1-0.4% is NOT established
+here. `Q` is `skyrmion_number(phi1, phi2)` and never touches agrad; the honest
+position is that integral-rho vanishing is proven and the persistence of Q is
+unexplained.
+
+The n = 0 trajectories are CONSISTENT with this, though not independent evidence
+of it -- `mag` below is the MAGNETIC energy, and B is sourced from rho by the
+screened solve, so a zero rho gives a zero B by construction rather than by a
+separate mechanism:
 
     arm        link       mag
     wrapped   -118.44   4185.3
