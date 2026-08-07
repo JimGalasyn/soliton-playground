@@ -5,6 +5,14 @@ This repo holds bound knots at N_link = 3 (`trefoil_t23`) and N_link = 1
 (`unknot_bare`) in a box *smaller* than theirs, so box size is the wrong suspect.
 What, exactly, is the difference?
 
+> **CORRECTION, 2026-08-07 (Amendment 2, end of file).** That first sentence
+> overstates them. EHN write that they "did not find any other knot solitons with
+> our numerical code", which "would imply" instability below N_link = 4, and that
+> "more detailed studies are necessary to conclude." That is a hedged
+> non-detection, not a reported floor -- and a non-detection does not contradict a
+> detection. The campaign below was designed against the stronger reading. Read it
+> knowing the premise is softer than it states.
+
 **Hypothesis.** The ∂a discretisation, and nothing else.
 
     bilinear  d_i a = Im(phi2* d_i phi2)/(|phi2|^2 + eps_a)      modulus-SUPPRESSED
@@ -441,7 +449,12 @@ because the mechanism the campaign exists to test was absent from the run. The
 third candidate is retired on the ground that it is not a valid discretisation of
 a COMPACT angle at all -- which also answers the question NLINK_LADDER.md posed
 when it named this candidate: the most literal reading of EHN's sentence cannot be
-what they implemented, because it would have given them no L3 coupling either.
+what they implemented, because under it integral-rho is identically 0 and so cannot
+be LOCKED to N_link, which is what their floor is a claim about.
+
+(That sentence previously read "it would have given them no L3 coupling either".
+Wrong -- see the correction above: sum(rho)=0 does not bound sum(rho*s), which is
+the energy the engine actually forms.)
 
 **No envelope probe was run, deliberately.** THRESH is the el/mag ratio at which
 L3 charge is expelled; under naive there is no L3 charge, so there is nothing for
@@ -519,3 +532,98 @@ stage 1 could not resolve is still unresolved.
 
 Re-run the wrapped arm with R nudged off the lattice (R += dx/2). ~2 A100 legs,
 ~$3.50. The guard means the same failure can no longer happen silently.
+
+---
+
+# Amendment 2 — 2026-08-07: what the EHN paper actually says
+
+Read from the source (PRL 135, 091603 and its supplemental) rather than inferred.
+Three things here change how this campaign should be described, and one of them
+means the framing at the top of this document overstates their claim.
+
+## 1. Their claim is a hedged NON-DETECTION, not a floor
+
+This document opens with "EHN report no bound knot soliton below N_link = 4".
+What they write is:
+
+> "We did **not find any** other knot solitons with our numerical code, which
+> **would imply** that the knot soliton with the linking number smaller than 4
+> cannot be stable due to the smaller electric charges and that it necessitates a
+> larger simulation box size than that we used to show the knot solitons with the
+> linking number larger than 5. **However, more detailed studies are necessary to
+> conclude.**"
+
+That is: their code did not find one, that *would imply* instability, and more
+work is needed. It is not a demonstrated floor.
+
+**A non-detection and a detection are compatible**, especially when the
+non-detecting party says so explicitly. So "what, exactly, is the difference?" may
+have no answer because there may be no contradiction. Our catalog holding bound
+knots at N_link = 1 and 3 does not contradict a search that did not find them --
+it is the more detailed study they call for.
+
+The rest of this campaign is still worth what it cost, but it was aimed at
+reconciling a disagreement that is weaker than we stated.
+
+## 2. They use BOTH IC types, and their headline solutions are RINGS
+
+Long-open question, answered from their figures:
+
+> Fig. 1: "the single phi2 string loop is linked with **five phi1 string loops**"
+>         -> N_link = 5, RINGS
+> Fig. 2 leftmost: "a single loop of the phi2 string linking with **four phi1
+>         string loops**" -> N_link = 4, RINGS
+> Fig. 2 others: "single phi1 and phi2 loops make a higher linking number by
+>         **linking multiple times**" -> TORUS
+
+So both constructions appear, and the two solutions they report as lowest-energy
+at their linking numbers -- Fig. 1 at N_link=5 and Fig. 2 leftmost at N_link=4 --
+are the RINGS type. That is exactly what `build_ic(geom="rings")` seeds.
+
+**The ladder was comparing like with like.** The torus/rings mismatch was real
+INTERNALLY (Amendment 1, our own reproduction gate) but it is not the difference
+with EHN.
+
+## 3. Their alpha only works under the d3-weighted reading, and now that is forced
+
+They state their parameters: **lambda/g^2 = 10^3, kappa/g^2 = 0.0008, C = 400** --
+identical to SB-1. That closes the one free variable in this file's step-size note.
+
+Eq. (12) of the supplemental descends `dE_disc/du`, and `E ~ d^3 sum E_disc`. Read
+literally (descend the unweighted sum), their alpha = 4e-4 is 1.6x this
+functional's stability bound at lambda = 1000. Measured, not argued:
+
+    lambda   alpha/alpha_max   outcome (N=48, R=10.0 off-lattice, 1000 steps)
+      400          0.64        ok,  E = 2174.2
+      500          0.80        ok,  E = 2177.7
+      625          1.00        ok,  E = 2173.4          <- exactly marginal
+      800          1.28        "ok" but E = 9,855,835   <- blowing up
+     1000          1.60        DIVERGED at n = 50
+
+alpha = 4e-4 sits exactly on the bound at lambda = 625; their own lambda is 1000.
+Under the d3-weighted reading the effective step is 4e-4 * 0.8^3 = 2.05e-4, which
+is 0.82x the bound and stable.
+
+Their published solutions exist, so **the d3-weighted reading is the correct one**
+-- not by preference but because the alternative is excluded by divergence. The
+step-size note in `relax.py` recorded this as "an open discrepancy, not a resolved
+one" because one dx cannot separate 0.512 from 0.5. It is now resolved from the
+other side: with lambda pinned at their stated value, the unweighted reading does
+not run.
+
+Nothing to change in our engine, which descends the unweighted density at
+alpha = 1e-4 -- 0.4x the bound. The correction is to how their alpha is read.
+
+## 4. Energy benchmarks, in v/g
+
+From their captions, and directly comparable to a run at their box:
+
+    N_link   type    energy
+      4      rings   6.0e3      (Fig. 2, leftmost)
+      4      torus   6.3e3      (Fig. 2)
+      5      rings   7.0e3      (Fig. 1)
+      5      torus   7.3e3      (Fig. 2)
+      5      torus   7.5e3      (Fig. 2)
+
+Within a linking number the rings solution is the lower-energy one, and they note
+energy grows with N_link because the electric charge on the phi1 string grows.
