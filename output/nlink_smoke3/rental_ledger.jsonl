@@ -1,0 +1,3 @@
+{"dph": 0.32005555555555554, "event": "rented", "geo": "Sweden, SE", "gpu": "RTX 4090", "instance_id": 46941412, "offer_id": "45279681", "provider": "vast", "reliability": 0.9971454, "ts": 1785986928.152}
+{"event": "running", "instance_id": 46941412, "offer_id": "45279681", "provider": "vast", "provision_s": 76.5, "ts": 1785987003.803}
+{"billed_s": 286.3, "destroyed": true, "est_cost_usd": 0.0255, "event": "destroyed", "instance_id": 46941412, "offer_id": "45279681", "outcome": "ok", "provider": "vast", "reason": "", "ts": 1785987214.711, "verify": "gone"}

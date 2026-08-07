@@ -1,0 +1,20 @@
+EHN FAITHFUL relaxer  N=192 L=153.6 dx=0.800 nlink=1 C=400.0 α=0.0001 β=0.002 U=50.0 q1=1.0 q2=0.0 ic=screened agrad=wrapped  (EHN E≈None)
+  n     0: Q=-1.001 link=-100% C=0 E=  4964.1 (g1=263 g2=4118 mag=1307.7 el=0.0 sky=0 pot=-724)
+        topo: Lk(φ1,φ2)=-0.724 nseg1=296 nseg2=570
+/workspace/jaxenv/lib/python3.14/site-packages/jax_solitons/knots.py:53: FutureWarning: In the future `np.object` will be defined as the corresponding NumPy scalar.
+  if not hasattr(np, a):
+Could not import cythonised chelpers, using Python alternative. This will give the same result, but is slower.
+        det(φ1): [(252, 1)]
+  n    50: Q=-1.001 link=-100% C=2 E=  4914.5 (g1=246 g2=4094 mag=1298.8 el=1.0 sky=0 pot=-724)
+        topo: Lk(φ1,φ2)=-0.796 nseg1=236 nseg2=562
+        det(φ1): [(208, 1)]
+  n   100: Q=-1.001 link=-100% C=5 E=  4897.1 (g1=254 g2=4070 mag=1290.5 el=7.0 sky=0 pot=-724)
+        topo: Lk(φ1,φ2)=-0.77 nseg1=248 nseg2=574
+        det(φ1): [(208, 1)]
+  n   150: Q=-1.001 link=-100% C=8 E=  4890.2 (g1=264 g2=4047 mag=1282.1 el=21.3 sky=0 pot=-724)
+        topo: Lk(φ1,φ2)=-0.943 nseg1=248 nseg2=570
+        det(φ1): [(208, 1)]
+  n   200: Q=-1.001 link=-100% C=10 E=  4891.7 (g1=273 g2=4024 mag=1273.6 el=45.9 sky=0 pot=-724)
+        topo: Lk(φ1,φ2)=-0.997 nseg1=248 nseg2=570
+        det(φ1): [(208, 1)]
+  FINAL E=6682.9 (EHN≈None) link=-100% Lk(φ1,φ2)=-0.997 det(φ1)=[(208, 1)] mag=1273.6 el=1837.1  (37s)

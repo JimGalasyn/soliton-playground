@@ -1,0 +1,3 @@
+{"dph": 0.3080555555555556, "event": "rented", "geo": "South Korea, KR", "gpu": "RTX 4090", "instance_id": 46940827, "offer_id": "32944337", "provider": "vast", "reliability": 0.999417, "ts": 1785986351.713}
+{"event": "running", "instance_id": 46940827, "offer_id": "32944337", "provider": "vast", "provision_s": 32.8, "ts": 1785986383.894}
+{"billed_s": 460.4, "destroyed": true, "est_cost_usd": 0.0394, "event": "destroyed", "instance_id": 46940827, "offer_id": "32944337", "outcome": "ok", "provider": "vast", "reason": "", "ts": 1785986812.884, "verify": "gone"}

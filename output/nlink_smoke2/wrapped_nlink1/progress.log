@@ -1,0 +1,38 @@
+Welcome to vast.ai. If authentication fails, try again after a few seconds, and double check your ssh key.
+Have fun!
+WARNING: Running pip as the 'root' user can result in broken permissions and conflicting behaviour with the system package manager, possibly rendering your system unusable. It is recommended to use a virtual environment instead: https://pip.pypa.io/warnings/venv. Use the --root-user-action option if you know what you are doing and want to suppress this warning.
+PREFLIGHT FAILED — this box cannot identify knots, so the run would relax for hours and record no determinant. Nothing launched.
+/workspace/jaxenv/lib/python3.14/site-packages/jax_solitons/knots.py:53: FutureWarning: In the future `np.object` will be defined as the corresponding NumPy scalar.
+  if not hasattr(np, a):
+WARNING: Could not load OpenGL library.
+Traceback (most recent call last):
+  File "<string>", line 1, in <module>
+    from jax_solitons.knots import identify_knot, torus_knot; assert identify_knot(torus_knot(2, 3))['determinant'] == 3
+                                                                     ~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^
+  File "/workspace/jaxenv/lib/python3.14/site-packages/jax_solitons/knots.py", line 96, in identify_knot
+    Knot = _knot_class()
+  File "/workspace/jaxenv/lib/python3.14/site-packages/jax_solitons/knots.py", line 56, in _knot_class
+    from pyknotid.spacecurves import Knot
+  File "/workspace/jaxenv/lib/python3.14/site-packages/pyknotid/spacecurves/__init__.py", line 85, in <module>
+    from pyknotid.spacecurves.spacecurve import SpaceCurve
+  File "/workspace/jaxenv/lib/python3.14/site-packages/pyknotid/spacecurves/spacecurve.py", line 39, in <module>
+    from pyknotid.visualise import plot_line, plot_projection
+  File "/workspace/jaxenv/lib/python3.14/site-packages/pyknotid/visualise.py", line 34, in <module>
+    from vispy.visuals.transforms import MatrixTransform
+  File "/workspace/jaxenv/lib/python3.14/site-packages/vispy/visuals/__init__.py", line 14, in <module>
+    from .axis import AxisVisual  # noqa
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/workspace/jaxenv/lib/python3.14/site-packages/vispy/visuals/axis.py", line 11, in <module>
+    from .visual import CompoundVisual, updating_property
+  File "/workspace/jaxenv/lib/python3.14/site-packages/vispy/visuals/visual.py", line 92, in <module>
+    from .. import gloo
+  File "/workspace/jaxenv/lib/python3.14/site-packages/vispy/gloo/__init__.py", line 47, in <module>
+    from . import gl  # noqa
+    ^^^^^^^^^^^^^^^^
+  File "/workspace/jaxenv/lib/python3.14/site-packages/vispy/gloo/gl/__init__.py", line 230, in <module>
+    from . import es2 as default_backend  # noqa
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/workspace/jaxenv/lib/python3.14/site-packages/vispy/gloo/gl/es2.py", line 48, in <module>
+    raise OSError('GL ES 2.0 library not found')
+OSError: GL ES 2.0 library not found
+Could not import cythonised chelpers, using Python alternative. This will give the same result, but is slower.
