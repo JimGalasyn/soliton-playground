@@ -77,7 +77,6 @@ from __future__ import annotations
 
 import argparse
 import json
-import subprocess
 import sys
 import time
 from pathlib import Path
@@ -107,6 +106,7 @@ from jax_solitons.steppers import arrested_flow, kinetic_energy  # noqa: E402
 from jax_solitons.steppers.verlet import make_verlet_step  # noqa: E402
 from jax_solitons.topology import hopf_charge  # noqa: E402
 from soliton_playground import viz  # noqa: E402
+from soliton_playground.provenance import code_provenance  # noqa: E402
 from soliton_playground.gpe_lab import (C_BLUE, C_GREEN, C_ORANGE,  # noqa: E402
                                         DARK_STYLE, characteristic_period)
 
@@ -252,10 +252,11 @@ def main():
     # keep gitignored -- the artifacts can be regenerated from this file alone.
     (args.out / "launch.json").write_text(json.dumps(
         {"utc": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
-         "lab_commit": subprocess.run(
-             ["git", "rev-parse", "HEAD"],
-             cwd=str(Path(__file__).resolve().parents[1]),
-             capture_output=True, text=True).stdout.strip(),
+         # Was a bare `git rev-parse HEAD` on THIS repo: it named the driver and
+         # said nothing about the engine, which is the half the physics lives in
+         # and the half that is a live sibling checkout. code_provenance() carries
+         # both, plus the dirty flags and the solver version.
+         "code": code_provenance(),
          "argv": sys.argv[1:],
          "flags": {k: (str(v) if isinstance(v, Path) else v)
                    for k, v in vars(args).items()}}, indent=1))
@@ -362,6 +363,7 @@ def main():
 
     summary = dict(
         status="UNSCORED DEMO (census protocol DRAFT)",
+        code=code_provenance(),
         preset="faddeev-skyrme",
         model=f"Faddeev-Skyrme c4={args.c4}; CP1 frame for descent, n-field "
               "constrained Verlet for real time",

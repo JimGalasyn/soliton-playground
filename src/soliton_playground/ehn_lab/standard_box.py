@@ -102,7 +102,6 @@ import argparse
 import hashlib
 import json
 import math
-import os
 import subprocess
 import sys
 import time
@@ -135,45 +134,19 @@ SB1 = {
 # rented box. That resolver existed because gpe_vortex_topology.py sat in a
 # sibling directory locally and flat in /workspace remotely, and its absence from
 # this file is what made the first rented B2 attempt exit 1 before running a leg.
-# A packaging problem was being solved with path arithmetic.
-def _engine_files():
-    """The engine's own module files, wherever jax_solitons is installed from.
+# A packaging problem was being solved with path arithmetic. That history now lives
+# with the code, in `soliton_playground.provenance`.
+#
+# PROVENANCE MOVED THERE so BOTH wings can stamp a result. The census wing
+# (gpe_lab) had no code provenance at all until 2026-09-02: every entrant,
+# cascade and quench manifest in `output/` was produced by whichever
+# jax-solitons working tree happened to be checked out, unrecorded. The discipline
+# was here, in this file, and stayed here because it lived in one battery instead
+# of in an instrument. These names are kept as aliases: the battery is what every
+# archived certificate was made by, and renaming its internals buys nothing.
+from soliton_playground.provenance import (             # noqa: E402
+    engine_files as _engine_files, engine_sha as _engine_sha)
 
-    Includes `knots.py`: the old hand-listed ENGINE_FILES omitted core_knot_id,
-    which `knot_determinants()` genuinely imports, so the "engine hash" excluded a
-    module the scoring depends on. Deriving the list from the package makes that
-    class of omission impossible to write.
-    """
-    import jax_solitons
-    root = Path(jax_solitons.__file__).resolve().parent
-    return ([root / "ehn" / f"{m}.py"
-             for m in ("relax", "energy", "knot_batch", "cross_linking")]
-            + [root / "vortex_topology.py", root / "knots.py"])
-
-
-def _git_state(cwd, paths=()):
-    """(commit, branch, origin, dirty_files) for the repo at `cwd`, or None."""
-    try:
-        run = lambda *a: subprocess.run(a, cwd=str(cwd), capture_output=True,
-                                        text=True, timeout=20)
-        commit = run("git", "rev-parse", "HEAD").stdout.strip()
-        if not commit:
-            return None
-        args = [str(p) for p in paths if Path(p).exists()]
-        porcelain = run("git", "status", "--porcelain", "--", *args).stdout.strip() \
-            if args else run("git", "status", "--porcelain").stdout.strip()
-        # ln[2:].strip(), not ln[3:]: porcelain is XY<space>PATH but the XY field
-        # is space-padded, and a fixed 3-char slice ate the first character of the
-        # path ("imulations/..."), which is exactly the kind of wrong-looking
-        # filename that sends someone hunting a nonexistent file.
-        return {
-            "commit": commit,
-            "branch": run("git", "rev-parse", "--abbrev-ref", "HEAD").stdout.strip(),
-            "origin": run("git", "config", "--get", "remote.origin.url").stdout.strip(),
-            "dirty_files": [ln[2:].strip() for ln in porcelain.splitlines() if ln.strip()],
-        }
-    except Exception:                                     # noqa: BLE001
-        return None
 
 # ================= ENVELOPE (spec §3, P's authoritative copy) ==========
 # Same constants as C's chamber.py — they unify at merge; rider 1 is P
@@ -223,88 +196,18 @@ BANDS = {
 # ================= engine SHA / certificate =================
 
 def engine_sha(explicit_commit=None):
-    """Engine provenance as a GIT COMMIT, not a content hash of source files.
+    """Engine provenance as a git commit — see `soliton_playground.provenance`.
 
-    WHY THIS CHANGED. The old scheme hashed the bytes of five hand-listed files.
-    Three problems, in increasing severity:
-
-      1. It was INCOMPLETE. ENGINE_FILES never listed core_knot_id.py, which
-         knot_determinants() genuinely imports -- so the "engine hash" excluded a
-         module the scoring depends on. A commit covers the whole tree by
-         construction and cannot be hand-listed wrong.
-      2. It was FRAGILE in a maintained repo. One `ruff --fix` or `black` pass
-         silently orphaned every certificate, including the ten compendium
-         entries, with no way to see from the digest that the change was cosmetic.
-      3. It was BLIND TO UNCOMMITTED EDITS in the sense that mattered: it happily
-         blessed a dirty tree as a definite-looking hash.
-
-    A commit is auditable -- you can `git diff` two of them and see whether a
-    change was cosmetic -- and a tag gives stable provenance across churn. Dirty
-    trees are now marked and make the certificate NON-CITABLE, the same rule the
-    OOM fix established: a certificate should never look authoritative about a
-    state nobody can reconstruct.
-
-    The FIELD NAME stays `engine_sha` so the certificate body, and therefore C's
-    chamber.py format and the cid formula, are unchanged in shape. Only the
-    derivation moved. Existing cids are NOT reproducible under the new scheme;
-    that is the deliberate cost, and the old per-file hashes are still recorded in
-    `detail.content_hashes` for lineage.
-
-    TWO REPOS SINCE THE 2026-08-01 EXTRACTION. The engine is `jax_solitons.ehn`
-    and the battery is this file, and they now live in different repositories that
-    move independently. `engine_sha` names the ENGINE, which is what the physics
-    depends on; the battery's own commit rides alongside as `battery`, because a
-    hand-edit to the file that computes the verdict makes a certificate just as
-    unreconstructible as an edited engine. Either one dirty marks the whole thing
-    dirty and therefore non-citable.
-
-    Resolution order: an explicit commit (how a payload shipped FLAT to a rented
-    box, where there is no git repo, carries the provenance of the tree it came
-    from) -> git rev-parse in the engine's repo -> a marked content-hash fallback.
+    MOVED, not changed in shape: the certificate body, C's `chamber.py` format and
+    the cid formula are untouched, and this stays the name the rest of the battery
+    calls. What moved with it is a defect fix the census wing forced into the open —
+    a wheel install used to be git-stamped with the ENCLOSING repo's SHA, because
+    `.venv` sits inside this working tree. It never fired here (`jax-solitons` is
+    installed editable) and it could not have: the branch has no test case in this
+    repo's install mix. See that module's header, and `tests/test_provenance.py`,
+    which manufactures the condition from numpy rather than waiting for a port.
     """
-    engine_files = _engine_files()
-    per = {q.name: hashlib.sha256(q.read_bytes()).hexdigest()
-           for q in engine_files if q.exists()}
-
-    battery = _git_state(_HERE, [Path(__file__).resolve()])
-    bat_rec = None if battery is None else {
-        "commit": battery["commit"], "branch": battery["branch"],
-        "dirty": bool(battery["dirty_files"]),
-        "dirty_files": battery["dirty_files"]}
-
-    if explicit_commit is None:
-        explicit_commit = os.environ.get("ENGINE_COMMIT") or None
-    if explicit_commit:
-        return explicit_commit[:16], {"source": "explicit/shipped",
-                                      "commit": explicit_commit, "dirty": None,
-                                      "content_hashes": per, "battery": bat_rec}
-
-    engine_root = engine_files[0].parent.parent if engine_files else None
-    eng = _git_state(engine_root, engine_files) if engine_root else None
-    if eng:
-        dirty = bool(eng["dirty_files"]) or bool(battery and battery["dirty_files"])
-        sha = eng["commit"][:16] + ("-dirty" if dirty else "")
-        return sha, {"source": "git", "commit": eng["commit"],
-                     "branch": eng["branch"], "origin": eng["origin"],
-                     "dirty": dirty, "dirty_files": eng["dirty_files"],
-                     "content_hashes": per, "battery": bat_rec}
-
-    # Installed as a wheel rather than a checkout: no git tree to interrogate, so
-    # fall back to the distribution version plus the content hashes. Marked as a
-    # fallback so it never reads like a commit.
-    try:
-        from importlib.metadata import version
-        dist = version("jax-solitons")
-    except Exception:                                     # noqa: BLE001
-        dist = None
-    h = hashlib.sha256()
-    for k in sorted(per):
-        h.update(per[k].encode())
-    tag = f"dist{dist}:" if dist else "nogit:"
-    return tag + h.hexdigest()[:10], {
-        "source": f"content-hash fallback (jax-solitons {dist or 'unknown'}, no git tree)",
-        "commit": None, "dirty": None, "content_hashes": per, "battery": bat_rec}
-
+    return _engine_sha(explicit_commit)
 
 def issue_certificate(battery_version, engine_sha_, box, results):
     """C's chamber.py issue_certificate, verbatim (format compatibility)."""

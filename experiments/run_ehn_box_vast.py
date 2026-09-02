@@ -40,6 +40,7 @@ theirs, and step counts are NOT comparable to the paper without that factor.
 """
 import argparse
 import json
+import re
 import shlex
 import subprocess
 import sys
@@ -53,6 +54,7 @@ from run_farm.protocols import HostSpec, LaunchSpec
 from run_farm.vast import VastLedger, VastProvider
 
 from soliton_playground.ehn_lab.chamber import preflight as envelope_preflight
+from soliton_playground.provenance import code_provenance
 
 HERE = Path(__file__).resolve().parent
 REPO = HERE.parent
@@ -60,6 +62,31 @@ IMG = "nvidia/cuda:12.2.2-runtime-ubuntu22.04"
 ONSTART = (HERE / "vast" / "onstart.sh").read_text()
 PIP_ENGINE = "git+https://github.com/JimGalasyn/jax-solitons"
 PIP_LAB = "git+https://github.com/JimGalasyn/soliton-playground"
+
+
+def _jax_pin():
+    """The farm's solver version, PARSED OUT of the script that installs it.
+
+    Deliberately not a second literal here. A Python constant and a shell constant
+    that must agree is a two-object invariant with nothing checking it, and the one
+    that drifts is always the one nobody runs -- the launcher would then record a pin
+    the box never applied, which is the manifest lying rather than the box misbuilding.
+    Reading it back from `onstart.sh` makes the shell the single source and this an
+    observation of it.
+
+    Raises rather than defaulting: an unpinned farm that RECORDS a pin is worse than
+    an unpinned farm, and a `.get(..., "unknown")` here would produce exactly that.
+    """
+    m = re.search(r"^JAX_PIN=([0-9][0-9A-Za-z.\-]*)\s*$", ONSTART, re.M)
+    if not m:
+        raise SystemExit(
+            "onstart.sh has no JAX_PIN= line: the farm's solver is unpinned, so two "
+            "legs of one campaign can run different jax versions at the same engine "
+            "commit. Restore the pin (see onstart.sh step 3) before renting.")
+    return m.group(1)
+
+
+JAX_PIN = _jax_pin()
 
 
 def relax_args(a, out):
@@ -163,6 +190,28 @@ def build_command(engine_argv, engine_commit, out="out_ehn_box", env=None):
         # has nothing left to validate. `exit=90` goes into DONE so the marker
         # distinguishes this from a relaxation that failed: the fleet reads it and
         # reports FETCHED BUT FAILED rather than a bare nonzero.
+        # ---- solver identity, BEFORE the knot preflight -------------------------
+        # Records what the box actually resolved and refuses the leg if it is not the
+        # pin. `exit=91` (vs the preflight's 90) so DONE says WHICH gate rejected it.
+        # env.json is written before the comparison, so a REJECTED leg still fetches
+        # the evidence of what it had -- a check that destroys its own diagnosis on
+        # failure is how the 2026-08-03 rental lost its determinants.
+        f'  if ! "$PY" -c "import json, sys, jax, jaxlib; '
+        f'e = {{\'jax\': jax.__version__, \'jaxlib\': jaxlib.__version__, '
+        f'\'pin\': \'{JAX_PIN}\', \'python\': sys.version.split()[0], '
+        f'\'devices\': [str(d) for d in jax.devices()]}}; '
+        f'json.dump(e, open(\'$OUT/env.json\', \'w\'), indent=1); '
+        f'sys.exit(0 if jax.__version__ == \'{JAX_PIN}\' else 91)" '
+        f'> "$OUT/solver.log" 2>&1; then\n'
+        f'    echo "SOLVER DRIFT: this box did not resolve jax {JAX_PIN}."\n'
+        f'    echo "Refused rather than run — a different integrator at the "\n'
+        f'    echo "same engine commit is a verdict failure, not a physics "\n'
+        f'    echo "result. See env.json."\n'
+        f'    cat "$OUT/solver.log"; cat "$OUT/env.json" 2>/dev/null\n'
+        f'    echo "exit=91" > "$OUT/DONE"\n'
+        f'    exit 91\n'
+        f'  fi\n'
+        f'  echo "solver OK: jax {JAX_PIN} as pinned"\n'
         f'  if ! "$PY" -c "from jax_solitons.knots import identify_knot, torus_knot; '
         f'assert identify_knot(torus_knot(2, 3))[\'determinant\'] == 3" '
         f'> "$OUT/preflight.log" 2>&1; then\n'
@@ -514,6 +563,14 @@ def main():
                      "lab_commit": subprocess.run(
                          ["git", "rev-parse", "HEAD"], cwd=str(REPO),
                          capture_output=True, text=True).stdout.strip(),
+                     # What the box is ASKED to resolve. What it actually resolved
+                     # lands in each leg's env.json, and disagreeing with this is
+                     # exit=91 -- so the two records are checkable against each other
+                     # rather than one of them being taken on trust.
+                     "jax_pin": JAX_PIN,
+                     # The launcher's own trees, with dirty flags: the two bare SHAs
+                     # above cannot say whether either was mid-edit at launch.
+                     "code": code_provenance(),
                      "argv": sys.argv[1:],
                      "flags": vars(a),
                      "remote_command": leg.command}

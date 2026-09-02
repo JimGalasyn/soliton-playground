@@ -72,6 +72,7 @@ import math
 import shlex
 import subprocess
 import sys
+import time
 from pathlib import Path
 
 from run_farm.budget import BudgetExceeded, CappedProvider, estimate
@@ -85,13 +86,14 @@ from run_farm.runpod import RunPodProvider
 from run_farm.vast import VastProvider
 
 from soliton_playground.ehn_lab.chamber import preflight as envelope_preflight
+from soliton_playground.provenance import code_provenance
 
 # Sibling script, not a package: experiments/ is sys.path[0] when run directly.
 # build_command is IMPORTED rather than copied — every branch of that leg script
 # was paid for by a specific failure (a dead ssh channel, an OOM 0.92 s in, a
 # truncated field.npz), and a second transcription would not inherit the next fix.
-from run_ehn_box_vast import (IMG, ONSTART, PIP_ENGINE, PIP_LAB, build_command,
-                              remote_exit, unpushed_blockers)
+from run_ehn_box_vast import (IMG, JAX_PIN, ONSTART, PIP_ENGINE, PIP_LAB,
+                              build_command, remote_exit, unpushed_blockers)
 
 HERE = Path(__file__).resolve().parent
 REPO = HERE.parent
@@ -702,6 +704,27 @@ def main():
         for b in blockers:
             print(f"  {b}")
         return 4
+
+    # The resolved launch, BEFORE the rental. This campaign wrote no launch record
+    # at all: the stage-2 rungs landed with their engine commit reachable only from
+    # the leg command inside run-farm's own log, and with nothing at all recording
+    # whether either tree was dirty or which solver the boxes resolved. Same
+    # convention and same reason as run_ehn_box_vast (48fa3d5) -- a run that dies is
+    # exactly when you need to know what it was asked to do.
+    outdir.mkdir(parents=True, exist_ok=True)
+    (outdir / "launch.json").write_text(json.dumps(
+        {"utc": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
+         "engine_commit": commit,
+         "jax_pin": JAX_PIN,
+         "code": code_provenance(),
+         "argv": sys.argv[1:],
+         "flags": vars(a),
+         "legs": {lab: lg.command for lab, lg in legs_meta.items()}},
+        # default=str: --out is a Path and argparse can grow another one. A launch
+        # record that raises TypeError AFTER the gates have passed would abort a
+        # campaign at the one moment everything else was ready to go.
+        indent=1, default=str))
+    print(f"  launch record -> {outdir / 'launch.json'}")
 
     ledger = RentalLedger(outdir / "rental_ledger.jsonl")
     if a.provider == "runpod":

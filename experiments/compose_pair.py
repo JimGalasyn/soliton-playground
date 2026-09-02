@@ -48,6 +48,7 @@ from jax_solitons.vortex_topology import (
     vortex_skeleton,
 )
 from soliton_playground.ehn_lab.particle_catalog import load as cat_load
+from soliton_playground.provenance import code_provenance
 
 PI = np.pi
 
@@ -229,14 +230,23 @@ def main():
             traj.append({"n": n, "sep": sep, "ncomp": ncomp, "Q": Q, **E})
             (outp / "manifest.json").write_text(json.dumps(
                 {"name": a.name, "sep0": cells * dx, "traj": traj,
-                 "wall_s": time.time() - t0}, indent=1))
+                 "wall_s": time.time() - t0,
+                 "code": code_provenance()}, indent=1))
         if n < a.steps:
             u, s, w = ER.relax_iter(u, s, w, dx, lam, kappa, Cn, U, eps_a,
                                     alpha, beta, q1, q2)
     p1c = u[0] + 1j * u[1]
     print("dets at end:", knot_determinants(np.asarray(p1c), dx, L))
     ER._save_field(outp / "field.npz", u, s, w, a.steps)
-    seps = [t["sep"] for t in traj if np.isfinite(t["sep"])]
+    # Endpoints of the FINITE SUBSET, not of the run -- see the note in
+    # quench_pair.py. Named here so the printed range cannot be read as the run's.
+    fin = [t for t in traj if np.isfinite(t["sep"])]
+    dropped = len(traj) - len(fin)
+    seps = [t["sep"] for t in fin]
+    if dropped:
+        print(f"NOTE: {dropped} of {len(traj)} samples were non-finite and are not "
+              f"in the verdict below; it spans n={fin[0]['n']}..{fin[-1]['n']} of "
+              f"{traj[-1]['n']}.")
     print(f"VERDICT: sep {seps[0]:.2f} -> {seps[-1]:.2f}  "
           f"({'REPEL' if seps[-1] > seps[0] + dx else 'ATTRACT' if seps[-1] < seps[0] - dx else 'FLAT (< dx drift)'})")
 

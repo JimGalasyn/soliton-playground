@@ -37,10 +37,26 @@ try:
     from jax_solitons.campaign import (FleetExecutor, FleetLeg, HostSpec,
                                        LaunchSpec, SentinelReady, VastLedger,
                                        VastProvider)
-except ModuleNotFoundError:      # campaign layer extracted to run-farm, 2026-07
+# ⚠ ImportError, not ModuleNotFoundError. `jax_solitons/campaign/` did not vanish in
+# the 2026-07 extraction -- it survives upstream as a directory containing nothing but
+# `__pycache__`, which Python happily treats as a NAMESPACE PACKAGE. So the import
+# resolves, exports nothing, and raises plain ImportError; the narrower except never
+# fired and this entire script has been unimportable since. A stale directory made a
+# gate unreachable, and nothing said so because nobody ran the script that owns it.
+except ImportError:              # campaign layer extracted to run-farm, 2026-07
     from run_farm import (FleetExecutor, FleetLeg, HostSpec, LaunchSpec,
                           SentinelReady, VastLedger, VastProvider)
 from run_farm import RunPodProvider
+
+# Sibling script, not a package: experiments/ is sys.path[0] when run directly.
+# JAX_PIN and unpushed_blockers are IMPORTED rather than copied, on the same rule
+# build_command already states in run_nlink_ladder -- every branch of these was paid
+# for by a specific failure and a second transcription does not inherit the next fix.
+# The copy that stood here had already drifted: its dirty check was UNSCOPED, so a
+# previous run's uncommitted manifest under output/ would refuse a rental. That is
+# the check firing on the wrong thing; the shared one is scoped to what pip installs.
+# This file keeps its own stricter `local_engine_state()` gate on the ehn_lab payload.
+from run_ehn_box_vast import JAX_PIN, unpushed_blockers
 
 HERE = Path(__file__).resolve().parent
 REPO = HERE.parent                       # soliton-playground checkout root
@@ -78,6 +94,15 @@ def build_command(engine_commit):
         f"cd /workspace && mkdir -p out_sbx_battery_full && "
         f"export ENGINE_COMMIT={engine_commit} && "
         f"/workspace/jaxenv/bin/pip install -q '{PIP_BATTERY}' && "
+        # Solver identity, in the `&&` prefix rather than the `;` tail: a certificate
+        # issued under a solver that is not the pin is not a weaker certificate, it
+        # is a certificate for a different integrator. So the box records what it
+        # resolved and refuses to run the battery at all if it is not {JAX_PIN}.
+        f"/workspace/jaxenv/bin/python -c \"import json, sys, jax, jaxlib; "
+        f"e = {{'jax': jax.__version__, 'jaxlib': jaxlib.__version__, "
+        f"'pin': '{JAX_PIN}', 'python': sys.version.split()[0]}}; "
+        f"json.dump(e, open('out_sbx_battery_full/env.json', 'w'), indent=1); "
+        f"sys.exit(0 if jax.__version__ == '{JAX_PIN}' else 91)\" && "
         "(/workspace/jaxenv/bin/pip install -q pyknotid 2>/dev/null "
         "|| echo 'pyknotid unavailable on box; scoring stays local') && "
         "(/workspace/jaxenv/bin/python -m soliton_playground.ehn_lab.standard_box "
@@ -85,39 +110,6 @@ def build_command(engine_commit):
         "; echo \"exit=$?\" > out_sbx_battery_full/DONE)")
 
 
-def unpushed_blockers():
-    """Refuse to rent while the box would install code OLDER than what we ran.
-
-    The box builds its environment with `pip install git+https://.../main` for both
-    repos, so anything not yet on origin/main simply is not there -- and the run
-    would silently exercise the previous engine while the local certificate claimed
-    the current commit. Push is blocked on this machine, so this is not a rare edge:
-    it is the default state after any local change.
-
-    This guard exists because the failure it prevents is exactly the one that has
-    cost this program the most: a job that runs, returns, and reports OK while
-    having tested something other than what was intended.
-    """
-    import subprocess
-    out = []
-    for label, repo in (("jax-solitons", REPO.parent / "jax-solitons"),
-                        ("soliton-playground", REPO)):
-        try:
-            run = lambda *a: subprocess.run(a, cwd=str(repo), capture_output=True,
-                                            text=True, timeout=20)
-            head = run("git", "rev-parse", "HEAD").stdout.strip()
-            dirty = run("git", "status", "--porcelain").stdout.strip()
-            anc = run("git", "merge-base", "--is-ancestor", head, "origin/main")
-            if anc.returncode != 0:
-                out.append(f"{label}: HEAD {head[:12]} is NOT on origin/main -- "
-                           f"the box would install main without it")
-            if dirty:
-                n = len(dirty.splitlines())
-                out.append(f"{label}: {n} uncommitted file(s) -- the box installs "
-                           f"from git and cannot see them")
-        except Exception as e:                            # noqa: BLE001
-            out.append(f"{label}: could not verify against origin/main ({e})")
-    return out
 
 
 def local_engine_state():

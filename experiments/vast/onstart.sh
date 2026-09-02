@@ -68,8 +68,22 @@ conda install -n base -y -c conda-forge mamba >> "$L" 2>&1 || log "mamba install
 SOLVER=mamba; command -v mamba >/dev/null || SOLVER=conda
 # NB: `pip` MUST be in this list -- step 4 installs the engine via
 # /workspace/jaxenv/bin/pip, which conda does NOT provide unless asked.
+#
+# ⚠ PINNED, and the pin is the FARM INTEGRATOR'S IDENTITY -- not parity with home.
+# Unpinned (`"jaxlib=*=*cuda*" jax`), this line resolved whatever conda-forge shipped
+# on the day of the rental. Two legs of the same campaign, weeks apart, at the SAME
+# engine commit, could therefore run different solvers, and nothing in the manifest
+# or the launch record would show it: the stage-2 rungs land within 4.3% of EHN, and
+# a solver change is comfortably inside that. Under a pin, solver drift is a VERDICT
+# FAILURE (the leg exits 91 before relaxing) rather than a silent change of physics.
+#
+# The skew is REAL and now explicit: home runs jax 0.11.0 from PyPI; conda-forge's
+# newest is 0.10.2, so the farm has always been a version behind. Measured, not
+# assumed -- jaxlib 0.10.2 has cuda129 builds on conda-forge for py311-py314.
+# Moving this number is a deliberate act that re-dates every farm result after it.
+JAX_PIN=0.10.2
 $SOLVER create -y -p /workspace/jaxenv -c conda-forge \
-    "jaxlib=*=*cuda*" jax scipy numpy pip >> "$L" 2>&1
+    "jaxlib=${JAX_PIN}=*cuda*" "jax=${JAX_PIN}" scipy numpy pip >> "$L" 2>&1
 
 # 4. The engine (small; GitHub pip is tolerable)
 /workspace/jaxenv/bin/pip install -q \

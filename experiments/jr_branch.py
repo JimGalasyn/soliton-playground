@@ -35,9 +35,9 @@ import matplotlib.pyplot as plt  # noqa: E402
 
 from jax_solitons.grid import BoxGrid  # noqa: E402
 from soliton_playground.gpe_lab import (  # noqa: E402
-    CHARGE_NONE, CHARGE_WINDING, C_BLUE, C_ORANGE, DARK_STYLE, MODEL, PRESET,
-    dip_centroid_z, evolve, make_energy, ring_pair_seed, seed_gate, smooth,
-    winding_xz)
+    CHARGE_NONE, CHARGE_WINDING, C_BLUE, C_ORANGE, DARK_STYLE,
+    dip_centroid_z, evolve, make_energy, provenance, ring_pair_seed,
+    seed_gate, smooth, winding_xz)
 
 Z0 = -10.0
 RADII = (6.0, 4.0, 3.0, 2.5, 2.0, 1.5, 1.2)
@@ -107,8 +107,19 @@ def main():
     crossover = (max(r["U"] for r in vort) if vort else None,
                  min(r["U"] for r in rare) if rare else None)
 
+    # `**provenance(...)`, not `preset=PRESET, model=MODEL`: the inline pair was a
+    # transcription of the census block that could not inherit its next field, and
+    # did not -- it missed `code` on the day that was added.
+    #
+    # ⚠ The charge is deliberately NOT one of the two constants. This run's entrants
+    # do not share one: a vortex ring is protected by CHARGE_WINDING and a
+    # rarefaction pulse is CHARGE_NONE (line 78), which is the whole point of a
+    # branch. Naming either here would assert it of every row. The per-entrant field
+    # in `results[]` is the mandatory one CENSUS_PROTOCOL means; this is a run
+    # summary, and it says so.
     summary = dict(status="UNSCORED DEMO (census protocol DRAFT)",
-                   preset=PRESET, model=MODEL,
+                   **provenance("per-entrant — see results[].protecting_charge; "
+                                "this run spans both branches"),
                    object="Jones-Roberts branch (vortex ring -> rarefaction)",
                    grid=dict(N=args.N, L=args.L, dt=args.dt, T=args.T),
                    results=results,

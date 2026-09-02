@@ -17,6 +17,8 @@ from jax_solitons.models.gpe import GPEKineticTerm, GPEPotentialTerm
 from jax_solitons.models.nlkg import _ring_factor
 from jax_solitons.steppers.splitstep import make_splitstep
 
+from soliton_playground.provenance import code_provenance
+
 G = 1.0
 
 # ------------------------------------------------------------------ provenance
@@ -42,16 +44,36 @@ CHARGE_KNOT_UNPROTECTED = "none (knot type); winding W conserved per strand"
 
 
 def provenance(protecting_charge: str) -> dict:
-    """The census provenance block every summary.json carries."""
+    """The census provenance block every summary.json carries.
+
+    TWO KINDS OF PROVENANCE, and until 2026-09-02 this carried only one. `preset` /
+    `model` / `protecting_charge` name the MEDIUM — they are what stop a GPE trefoil
+    and a Faddeev T(2,3) hopfion colliding in the bestiary. They say nothing about
+    WHICH TREE computed the number, and `jax-solitons` is installed here from a live
+    sibling checkout, so every census result to date was produced by whatever was
+    checked out at that instant with no record of which. `code` closes that; see
+    `soliton_playground.provenance`. The EHN wing has recorded it since 2026-08-01,
+    which is the point: the discipline existed in one campaign's battery and never
+    reached the wing next door.
+    """
     return dict(preset=PRESET, model=MODEL,
-                protecting_charge=protecting_charge)
+                protecting_charge=protecting_charge,
+                code=code_provenance())
 
 
 def zoo_provenance(protecting_charge: str) -> dict:
     """The same provenance as event-graph particle attrs, so the lineage record
-    is self-describing when read back without its summary."""
+    is self-describing when read back without its summary.
+
+    Flat scalars only — these are particle attrs, not a JSON document — so the code
+    block is reduced to the two identities a reader would chase: the engine SHA
+    (already carrying its own `-dirty` suffix) and this repo's commit.
+    """
+    code = code_provenance()
     return {"zoo.preset": PRESET, "zoo.model": MODEL,
-            "zoo.protecting_charge": protecting_charge}
+            "zoo.protecting_charge": protecting_charge,
+            "zoo.engine_sha": code["engine_sha"],
+            "zoo.lab_commit": code["lab_commit"]}
 
 
 # ----------------------------------------------------------------- energetics

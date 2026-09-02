@@ -57,6 +57,7 @@ from jax_solitons.steppers.verlet import make_verlet_step
 # sibling-directory import that only worked because the driver was shipped
 # flat beside gauged_iso.py; it is a package module here.
 from soliton_playground.gauged_iso import gauged_iso_model, n_of_iso
+from soliton_playground.provenance import code_provenance
 
 
 class _FrozenModulusConstraint:
@@ -282,7 +283,8 @@ def main():
                     eref=eref, kick_dt=args.kick_dt, kick_steps=args.kick_steps,
                     nseeds=args.nseeds, seeds=seeds, eps=args.eps,
                     kick_sector=args.kick_sector,
-                    relaxed_diag=relaxed_diag, legs=[])
+                    relaxed_diag=relaxed_diag, legs=[],
+                    code=code_provenance())
 
     for name, (model, seed_fn, n_of) in specs.items():
         step1 = make_verlet_step(model, grid, dt=args.kick_dt)

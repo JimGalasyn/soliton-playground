@@ -139,6 +139,7 @@ import jax.numpy as jnp
 
 from jax_solitons.ehn import quench as Q
 from jax_solitons.ehn import relax as ER
+from soliton_playground.provenance import code_provenance
 
 # Sibling script, not a package: experiments/ is sys.path[0] when this is run
 # directly. Imported rather than re-derived so the composition here is the SAME
@@ -582,7 +583,10 @@ def main():
         outp.mkdir(parents=True, exist_ok=True)
         (outp / "manifest.json").write_text(json.dumps(
             {"partial": True, "done": done, "steps": a.steps,
-             "traj": samples, "wall_s": time.time() - t0}, indent=1, default=float))
+             "traj": samples, "wall_s": time.time() - t0,
+             # On the PARTIAL too: a run killed at hour 2 is exactly the artifact
+             # whose engine nobody can reconstruct from memory later.
+             "code": code_provenance()}, indent=1, default=float))
     wall = time.time() - t0
 
     phi1_end = state[0]
@@ -600,6 +604,10 @@ def main():
         # pair per skeleton component, NOT a flat list of ints.
         "dets_end": [[int(n_), int(det)] for n_, det in dets_end],
         "traj": samples, "wall_s": wall,
+        # Which tree computed this. `jax-solitons` is a live sibling checkout, so
+        # without this the engine is an unrecorded independent variable -- see
+        # soliton_playground/provenance.py.
+        "code": code_provenance(),
     }
     (outp / "manifest.json").write_text(json.dumps(manifest, indent=1, default=float))
 
@@ -642,12 +650,31 @@ def main():
           + ("  <-- GROWING: the transverse form is being asked to carry charge "
              "dynamics it cannot represent" if gN > g0 * 1.5 else ""))
     if not a.single:
-        seps = [r["sep"] for r in samples if np.isfinite(r.get("sep", np.nan))]
-        if len(seps) >= 2:
-            verdict = ("SEPARATING" if seps[-1] > seps[0] + dx else
-                       "APPROACHING" if seps[-1] < seps[0] - dx else
+        # ⚠ The endpoints are the endpoints OF THE FINITE SUBSET, which is not the
+        # same thing as the endpoints of the run. Dropping non-finite samples and
+        # then reading [0] and [-1] silently relabels the last finite sample as "the
+        # end": if the pair diverged at sample 40 of 72, this reported a mid-run
+        # separation as the final one and called it SEPARATING. The filter stays --
+        # a NaN is not a measurement -- but the verdict now says which samples it is
+        # actually between, and how many it could not see. Same defect class as the
+        # nan-frame drop logged against per-frame averages in jax-civ.
+        fin = [r for r in samples if np.isfinite(r.get("sep", np.nan))]
+        dropped = len(samples) - len(fin)
+        if len(fin) >= 2:
+            s0, s1 = fin[0], fin[-1]
+            verdict = ("SEPARATING" if s1["sep"] > s0["sep"] + dx else
+                       "APPROACHING" if s1["sep"] < s0["sep"] - dx else
                        "FLAT (< dx)")
-            print(f"  sep {seps[0]:.2f} -> {seps[-1]:.2f}  ({verdict})")
+            span = (f"  [n={s0['n']}..{s1['n']} of {samples[-1]['n']}"
+                    + (f"; {dropped} non-finite sample(s) dropped]" if dropped
+                       else "]"))
+            print(f"  sep {s0['sep']:.2f} -> {s1['sep']:.2f}  ({verdict}){span}")
+            if dropped:
+                print("    -> the run went non-finite before it ended: this verdict "
+                      "is about the finite window above, NOT about the run.")
+        elif samples:
+            print(f"  sep: fewer than two finite samples of {len(samples)} — "
+                  f"no separation verdict")
     print(f"  wall {wall:.1f}s -> {outp / 'manifest.json'}")
     return 0
 
