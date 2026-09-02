@@ -143,6 +143,25 @@ whose recorded solver is not the campaign pin is VOID**, not a data point — a
 different integrator at the same engine commit is a different experiment, and the
 stabiliser differences this campaign is looking for are smaller than a solver change.
 
+### R3a — the rule both of this campaign's vacuous gates would have failed
+
+**Before registering any PASS/FAIL criterion, ask whether the control arm or an
+identity already fixes its value.** If it does, the criterion is not a test and
+writing it as one is the error.
+
+This campaign has now produced two instances and they share a shape — a falsifier
+written as a measurement when it was already a theorem:
+
+* the `c4`-vs-`C` scan above, whose control passed, so no arm passing could mean
+  anything (the control fixed the value);
+* `LAB_CHARGE_BINDING.md`'s "does bound charge scale with the Hopf index", called
+  there "a single measurement and the first one to do", and already answered by
+  the divergence identity stated in `NLINK_LADDER.md:407` the same day (an
+  identity fixed the value).
+
+Two is a pattern, not two accidents. The rule is cheap, it runs before any compute
+is spent, and it is the one check that would have caught both.
+
 ### R4 — ABORT conditions, pre-committed
 
 1. Control terminates in BUDGET → the whole campaign is VOID. No arm is interpreted.

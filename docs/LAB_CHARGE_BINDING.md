@@ -74,17 +74,41 @@ argument is sound and is **not** independently checked here; it rests on
 linearisation.** Homotopy classes of continuous maps into a circle are
 `[X, S^1] = H^1(X; Z)`, and `H^1(S^2; Z) = 0`. So **every** continuous
 `theta(n)` defined on the target sphere is null-homotopic and therefore lifts to a
-single-valued real function — no matter how nonlinear the slaving is. Any `theta`
-that is a function of the *local Néel direction alone* is single-valued on `R^3`
-whenever the texture is, and Q = 0 follows. The failure is not that this particular
-response happens not to wind; it is that no pointwise slaving to a unit-vector
-texture *can* wind.
+single-valued real function — no matter how nonlinear the slaving is. The failure
+is not that this particular response happens not to wind; it is that no pointwise
+slaving to a unit-vector texture *can* wind.
 
-The escape is therefore not a better material or a stronger response. It is a
-different order parameter: one with a genuinely circle-valued component, i.e. a
-**phase-vortex line threaded by flux**, which is EHN's geometry — two distinct
-strings, one carrying a compact phase. A magnetic hopfion is a single-field `pi_3`
-texture with no compact angle and no string.
+⚠ **Take the argument on the TARGET, not on the domain — the domain version proves
+too much.** "`R^3` is simply connected, so any continuous `theta` lifts" is true of
+a smooth hopfion and would appear to forbid EHN's charge as well, which plainly
+exists. EHN escape because `a = arg phi2` is **not continuous on `R^3`**: it is
+undefined on the `phi2` string, and `R^3` minus a line has `pi_1 = Z`. So the real
+content is always the **singular locus** — the question is whether a texture can
+have a line defect for `theta` to wind around. (Raised by the
+null-worldtube-private session; the version above quietly assumed a defect-free
+texture, which is exactly where the escape would have hidden.)
+
+**The target-cohomology version answers that too, and the domain version cannot:**
+
+    target                        H_1          H^1(X;Z)   can theta wind?
+    S^2   (Néel vector)           0            0          no
+    RP^2  (headless director)     Z_2          0          no
+    S^1   (compact phase)         Z            Z          YES
+
+A Néel vector in `S^2` has **no stable line defects at all** (`pi_1(S^2) = 0`).
+A headless director in `RP^2` **does** have disclination lines (`pi_1 = Z_2`) —
+and `theta` still cannot wind around them, because `H^1(RP^2; Z) = Hom(Z_2, Z) = 0`
+by the universal-coefficient theorem. **Torsion is the whole point:** a `Z_2`
+defect is its own inverse and a phase winding is `Z`-valued, and the only
+homomorphism `Z_2 -> Z` is zero. So the result holds for Néel and director
+textures alike, *including ones carrying line defects*.
+
+Only a target with `H^1 != 0` — a genuinely circle-valued order-parameter
+component — admits a winding `theta`. The escape is therefore not a better
+material or a stronger response, and not a defect-rich texture either. It is a
+different order parameter: a **phase-vortex line threaded by flux**, which is
+EHN's geometry — two distinct strings, one carrying a compact phase. A magnetic
+hopfion is a single-field `pi_3` texture with no compact angle and no string.
 
 ### What falls, and what does not
 
