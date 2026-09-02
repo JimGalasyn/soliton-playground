@@ -236,3 +236,76 @@ def test_code_provenance_survives_an_unreadable_tree(monkeypatch):
         assert block["jax"], "the solver version does not come from git"
     finally:
         provenance.code_provenance.cache_clear()
+
+
+# ---------------------------------------------------------------------------
+# THE RENDERER, not just the stamp. Prompted by abiogenesis-15: our finding was
+# that the false claim surfaced in a human-readable line, and the same question
+# has to be asked of every OTHER path that can emit one. Three more were live.
+# ---------------------------------------------------------------------------
+
+
+def test_no_path_claims_there_is_no_tree_without_having_looked():
+    """Sweep every arm: 'no owning git tree' may only follow a definitive answer.
+
+    The dist arm's sentence is a positive claim about a tree. It is correct after
+    `_owns` returns False (git looked and said no) and false after any other route
+    — an empty file list, an unimportable engine, a missing git.
+
+    ⚠ HOW MUCH THIS TEST ACTUALLY PROVES, measured rather than assumed. The
+    empty-file-list route is guarded TWICE: by the explicit `root is None` arm in
+    `engine_sha`, and, behind it, by `_git_state(None, ...)` raising TypeError and
+    returning an unavailability. Removing only the explicit arm leaves this test
+    GREEN — it fails only when both are reverted. So the explicit arm is
+    belt-and-braces rather than the thing holding the line, and this test's real
+    subject is the exception path. Recorded because a redundant guard whose test
+    passes without it is indistinguishable, from the summary line, from a guard
+    that is load-bearing.
+    """
+    with tempfile.TemporaryDirectory() as td:
+        outside = Path(td) / "pkg" / "mod.py"
+        outside.parent.mkdir(parents=True)
+        outside.write_text("x = 1\n")
+
+        cases = {
+            "no files at all": dict(files=[]),
+            "files outside any repo": dict(files=[outside]),
+        }
+        for label, kw in cases.items():
+            sha, detail = engine_sha(explicit_commit=None, **kw)
+            assert "no owning git tree" not in detail["source"], (
+                f"[{label}] claims there is no owning tree: {detail['source']}")
+            assert detail["commit"] is None, label
+            assert "unavailable" in detail, f"[{label}] {detail}"
+
+
+def test_the_short_sha_distinguishes_unavailable_from_no_owner():
+    """The rendered string is the renderer: it travels without its detail dict.
+
+    `zoo.engine_sha` and the certificate field carry this string alone, so two
+    different answers must not print the same prefix.
+    """
+    sha_unavail, d_unavail = engine_sha(files=[])
+    assert sha_unavail.startswith("unavail:"), sha_unavail
+    assert d_unavail["source"].startswith("UNAVAILABLE")
+
+    if _numpy_is_inside_this_worktree():
+        sha_dist, d_dist = engine_sha(files=[NUMPY_DIR / "__init__.py"])
+        assert sha_dist.startswith(("dist", "nogit:")), sha_dist
+        assert not sha_dist.startswith("unavail:")
+        assert sha_dist[:8] != sha_unavail[:8], (
+            "an unavailable stamp and a dist stamp render alike")
+
+
+def test_engine_sha_never_raises_even_with_no_importable_engine(monkeypatch):
+    """The module's own promise, asserted. engine_files() imports the engine."""
+    def no_engine():
+        raise ModuleNotFoundError("No module named 'jax_solitons'")
+
+    monkeypatch.setattr(provenance, "engine_files", no_engine)
+    monkeypatch.delenv("ENGINE_COMMIT", raising=False)
+    sha, detail = provenance.engine_sha()
+    assert detail["commit"] is None
+    assert "unavailable" in detail, detail
+    assert "jax_solitons" in detail["unavailable"], detail["unavailable"]
+    assert "no owning git tree" not in detail["source"]

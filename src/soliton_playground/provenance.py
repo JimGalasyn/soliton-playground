@@ -157,11 +157,16 @@ def _git_state(repo_dir, scope=(), owns=()):
 
         # OWNERSHIP FIRST. Everything below this point would otherwise describe
         # whichever repo happens to enclose `repo_dir`.
+        # ⚠ `is not True`, not `is not False`. With no probes at all, `_owns`
+        # returns None and an earlier version fell THROUGH to stamping -- i.e. the
+        # original defect, reachable by passing an empty file list. Stamping
+        # requires positive evidence; everything else is an unavailability.
         own = _owns(repo_dir, owns)
         if own is False:
             return None
-        if own is None and owns:
-            return {"unavailable": "ownership could not be determined"}
+        if own is not True:
+            return {"unavailable": "ownership could not be determined"
+                                   + ("" if owns else " (no probe paths given)")}
 
         args = [str(p) for p in scope if (repo_dir / p).exists() or Path(p).exists()]
         st = (_run(repo_dir, "git", "status", "--porcelain", "--", *args) if args
@@ -254,7 +259,16 @@ def engine_sha(explicit_commit=None, files=None):
     where there is no git repo, carries the provenance of the tree it came from) -> git
     in the engine's OWN repo -> a marked identity for a wheel install.
     """
-    files = list(engine_files() if files is None else files)
+    # The module promises never to raise: a campaign must not die because
+    # provenance could not be read. `engine_files()` imports the engine, so an
+    # unimportable or absent jax_solitons was the one input that could still throw.
+    files_err = None
+    if files is None:
+        try:
+            files = engine_files()
+        except Exception as e:                                 # noqa: BLE001
+            files, files_err = [], f"{type(e).__name__}: {e}"
+    files = list(files)
     per = {q.name: hashlib.sha256(q.read_bytes()).hexdigest()
            for q in files if q.exists()}
 
@@ -277,7 +291,14 @@ def engine_sha(explicit_commit=None, files=None):
                                       "content_hashes": per, "battery": lab_rec}
 
     root = files[0].parent.parent if files else None
-    eng = _git_state(root, owns=files, scope=files) if root else None
+    if root is None:
+        # Nothing to ask ABOUT. The dist arm below would answer "no owning git
+        # tree", which is a positive claim about a tree nobody looked for -- the
+        # same false-sentence shape the third arm exists to prevent, reachable
+        # here by an empty file list rather than by a missing git.
+        eng = {"unavailable": files_err or "no engine files to identify"}
+    else:
+        eng = _git_state(root, owns=files, scope=files)
 
     # ⚠ THE THIRD ARM. "could not establish the identity" must not fall through to
     # the dist arm below, whose `source` asserts "no owning git tree" -- a claim
@@ -288,7 +309,14 @@ def engine_sha(explicit_commit=None, files=None):
         h = hashlib.sha256()
         for k in sorted(per):
             h.update(per[k].encode())
-        return "nogit:" + h.hexdigest()[:10], {
+        # ⚠ `unavail:`, NOT `nogit:` -- which the dist arm below also emits when it
+        # has no version. The short sha is the RENDERER: it is what lands in
+        # `zoo.engine_sha` and in the certificate field, often without its detail
+        # dict. Two different answers that print the same string are one answer as
+        # far as any reader is concerned. (Prompted by abiogenesis-15 checking
+        # their own describe() after we named the summary line as where the false
+        # sentence surfaced.)
+        return "unavail:" + h.hexdigest()[:10], {
             "source": f"UNAVAILABLE ({eng['unavailable']})",
             "commit": None, "dirty": None, "unavailable": eng["unavailable"],
             "install": install_kind("jax-solitons"), "dist_version": dist,
