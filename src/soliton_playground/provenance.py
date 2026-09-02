@@ -45,6 +45,16 @@ before and after the commits that moved the stage-2 numbers. The record has to b
 git SHA plus a dirty flag, and for a wheel the dist version IS the whole identity,
 recorded as such and marked so it never renders like a commit.
 
+⚠ **AND THE GUARD IS TRI-STATE, because the fix's first cut reintroduced the very
+defect it closes.** A bool guard caught "git could not answer" and returned it as
+"not owned", so a legitimate editable tree on a box with no git was quietly demoted
+to a dist install and had its real SHA dropped -- a confident wrong identity again.
+Found by abiogenesis-15 on ADOPTING this guard, against an existing test of theirs
+that monkeypatches git into raising; we had no such test, which is why we shipped
+it. Our transfer found their defect, their suite found ours: `transfer is the test`
+runs both ways, and the instrument is the receiving repo's EXISTING suite, not the
+new tests that ship with a fix. See `_owns`.
+
 Never raises. A campaign must not die because provenance could not be read, and an
 *unavailable* stamp is still a record — it says the tree was not a checkout, which is
 strictly better than the field being absent, which is indistinguishable from "nobody
@@ -74,14 +84,62 @@ def _run(cwd, *args, timeout=20):
                           timeout=timeout)
 
 
+def _owns(repo_dir, probes):
+    """TRI-STATE: True tracked, False definitively not tracked, None could not ask.
+
+    ⚠⚠ **The third state is not fussiness, and a bool here reintroduces the exact
+    defect this module exists to prevent.** "git could not answer" is not "this repo
+    does not own the file": collapsing them means a legitimate editable tree on a box
+    with no git — a plausible farm image — is silently downgraded to a dist install
+    and has its real SHA dropped. That is a confident wrong identity again, wearing
+    the fix's clothes. Found by abiogenesis-15 on adopting this guard, against an
+    EXISTING test of theirs that monkeypatches git into raising; we had no equivalent
+    test, which is why we shipped the bool. Their suite found our defect the way our
+    transfer found theirs.
+
+    The states are machine-distinguishable, measured 2026-09-02:
+
+        rc 0    the path is tracked here                        -> True
+        rc 1    `--error-unmatch` says git does not know it     -> False
+        rc 128  not a repository / cannot ask                   -> None
+
+    `any` over a LIST, not a single probe: a brand-new module is untracked by
+    definition, and disqualifying its own repo on that basis would mean this file
+    could never stamp anything on the commit that introduces it. One tracked sibling
+    settles which repo we are standing in. (Note the probes must be run one at a
+    time: `--error-unmatch` fails the whole invocation if ANY path is unknown, so a
+    single batched call cannot express `any`.)
+    """
+    live = [Path(p) for p in probes]
+    live = [p for p in live if p.exists()]
+    if not live:
+        return None
+    answered = False
+    for q in live:
+        try:
+            rc = _run(repo_dir, "git", "ls-files", "--error-unmatch", "--",
+                      str(q)).returncode
+        except Exception:                                      # noqa: BLE001
+            continue
+        if rc == 0:
+            return True
+        if rc == 1:                     # a real "no", not a failure to ask
+            answered = True
+    return False if answered else None
+
+
 def _git_state(repo_dir, scope=(), owns=()):
-    """(commit, branch, origin, dirty_files) for the repo that OWNS `owns`, or None.
+    """State for the repo that OWNS `owns`. Three possible returns, all meaningful.
+
+        dict with "commit"      -> owned, stamped
+        None                    -> DEFINITIVELY not owned (use a dist identity)
+        {"unavailable": reason} -> could not establish it (say so; claim nothing)
 
     `scope` limits the dirty check to paths that matter; empty means the whole tree.
-    `owns` is the ownership evidence: at least one of these paths must be TRACKED by
-    the repo git finds from `repo_dir`, or this returns None. Without that test a
-    wheel install inside an in-tree `.venv` is described by the enclosing repository
-    with full confidence -- see this module's header.
+    `owns` is the ownership evidence -- see `_owns`. Without that test a wheel install
+    inside an in-tree `.venv` is described by the enclosing repository with full
+    confidence; without the None arm, a box with no git turns an editable tree into a
+    dist one. Both are the same failure: an identity asserted that nobody checked.
 
     Untracked files are NOT special-cased away: `status --porcelain` reports them as
     `??` and they land in `dirty_files`, because a brand-new importable module that
@@ -90,19 +148,20 @@ def _git_state(repo_dir, scope=(), owns=()):
     try:
         repo_dir = Path(repo_dir)
         if not repo_dir.exists():
-            return None
-        commit = _run(repo_dir, "git", "rev-parse", "HEAD").stdout.strip()
-        if not commit:
-            return None
+            return {"unavailable": f"no such directory: {repo_dir}"}
+        rp = _run(repo_dir, "git", "rev-parse", "HEAD")
+        commit = rp.stdout.strip()
+        if rp.returncode != 0 or not commit:
+            return {"unavailable":
+                    (rp.stderr or "").strip()[:200] or "git rev-parse HEAD failed"}
 
         # OWNERSHIP FIRST. Everything below this point would otherwise describe
         # whichever repo happens to enclose `repo_dir`.
-        probes = [Path(p) for p in owns]
-        probes = [p for p in probes if p.exists()]
-        if probes and not any(
-                _run(repo_dir, "git", "ls-files", "--error-unmatch", "--",
-                     str(p)).returncode == 0 for p in probes):
+        own = _owns(repo_dir, owns)
+        if own is False:
             return None
+        if own is None and owns:
+            return {"unavailable": "ownership could not be determined"}
 
         args = [str(p) for p in scope if (repo_dir / p).exists() or Path(p).exists()]
         st = (_run(repo_dir, "git", "status", "--porcelain", "--", *args) if args
@@ -121,8 +180,10 @@ def _git_state(repo_dir, scope=(), owns=()):
             "dirty_files": [ln[2:].strip()
                             for ln in porcelain.splitlines() if ln.strip()],
         }
-    except Exception:                                          # noqa: BLE001
-        return None
+    except Exception as e:                                     # noqa: BLE001
+        # NOT None. "the call blew up" is an unavailability, and reporting it as
+        # "not owned" is what silently drops a real SHA on a box without git.
+        return {"unavailable": f"{type(e).__name__}: {e}"[:200]}
 
 
 def install_kind(dist_name):
@@ -198,9 +259,14 @@ def engine_sha(explicit_commit=None, files=None):
            for q in files if q.exists()}
 
     lab = lab_state()
-    lab_rec = None if lab is None else {
-        "commit": lab["commit"], "branch": lab["branch"],
-        "dirty": bool(lab["dirty_files"]), "dirty_files": lab["dirty_files"]}
+    if lab and "commit" in lab:
+        lab_rec = {"commit": lab["commit"], "branch": lab["branch"],
+                   "dirty": bool(lab["dirty_files"]),
+                   "dirty_files": lab["dirty_files"]}
+    elif lab:                       # {"unavailable": reason} -- say which
+        lab_rec = {"commit": None, "unavailable": lab["unavailable"]}
+    else:                           # definitively not this repo's file
+        lab_rec = None
 
     if explicit_commit is None:
         explicit_commit = os.environ.get("ENGINE_COMMIT") or None
@@ -212,6 +278,22 @@ def engine_sha(explicit_commit=None, files=None):
 
     root = files[0].parent.parent if files else None
     eng = _git_state(root, owns=files, scope=files) if root else None
+
+    # ⚠ THE THIRD ARM. "could not establish the identity" must not fall through to
+    # the dist arm below, whose `source` asserts "no owning git tree" -- a claim
+    # nobody checked. On a box without git that sentence is simply false, and the
+    # editable tree's real SHA would have been dropped to make room for it.
+    if eng and "unavailable" in eng:
+        dist = dist_version("jax-solitons")
+        h = hashlib.sha256()
+        for k in sorted(per):
+            h.update(per[k].encode())
+        return "nogit:" + h.hexdigest()[:10], {
+            "source": f"UNAVAILABLE ({eng['unavailable']})",
+            "commit": None, "dirty": None, "unavailable": eng["unavailable"],
+            "install": install_kind("jax-solitons"), "dist_version": dist,
+            "content_hashes": per, "battery": lab_rec}
+
     if eng:
         dirty = bool(eng["dirty_files"]) or bool(lab and lab["dirty_files"])
         sha = eng["commit"][:16] + ("-dirty" if dirty else "")
@@ -287,6 +369,11 @@ def code_provenance():
         "lab_commit": (lab or {}).get("commit"),
         "lab_dirty": bool((lab or {}).get("dirty")),
         "lab_dirty_files": (lab or {}).get("dirty_files") or [],
+        # Present only when the lab tree could not be read at all. A missing
+        # lab_commit with no reason beside it is indistinguishable from one nobody
+        # looked for, which is the gap this whole module is about.
+        **({"lab_unavailable": lab["unavailable"]}
+           if lab and "unavailable" in lab else {}),
         "jax": dist_version("jax"),
         "jaxlib": dist_version("jaxlib"),
     }

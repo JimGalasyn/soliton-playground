@@ -24,13 +24,16 @@ stamped with this repo's own commit.
 from __future__ import annotations
 
 import subprocess
+import tempfile
 from pathlib import Path
 
 import numpy
 import pytest
 
-from soliton_playground.provenance import (_git_state, code_provenance, engine_sha,
-                                           engine_files, install_kind)
+from soliton_playground import provenance
+from soliton_playground.provenance import (_git_state, _owns, code_provenance,
+                                           engine_sha, engine_files,
+                                           install_kind)
 
 REPO = Path(__file__).resolve().parents[1]
 NUMPY_DIR = Path(numpy.__file__).resolve().parent
@@ -143,3 +146,93 @@ def test_census_summaries_carry_code_provenance():
 def test_code_provenance_is_one_answer_per_process():
     """Cached, so a run's summary and its event-graph particles cannot disagree."""
     assert code_provenance() is code_provenance()
+
+
+# ---------------------------------------------------------------------------
+# THE TESTS WE DID NOT HAVE, AND WHICH ANOTHER REPO'S SUITE FOUND FOR US.
+#
+# The first cut of the ownership guard returned a bool and caught every exception
+# as "not owned". abiogenesis-15 adopted it and it immediately broke an EXISTING
+# test of theirs — one that monkeypatches git into raising and asserts the stamp
+# records its unavailability. We had no such test, which is exactly why we shipped
+# the bug: a legitimate editable tree on a box with no git was silently downgraded
+# to a dist install and had its real SHA dropped. Same confident-wrong-identity
+# failure the module exists to prevent, reintroduced by its own fix.
+#
+# Symmetry worth keeping in view: our transfer found their defect, their suite
+# found ours. The receiving repo's EXISTING tests are the instrument, not the new
+# ones that ship with a fix.
+# ---------------------------------------------------------------------------
+
+
+def test_git_exit_codes_are_actually_tri_state():
+    """The guard's premise, asserted rather than assumed.
+
+    If git ever collapsed 1 and 128 into one code, `_owns` could not distinguish
+    "not tracked" from "cannot ask" and the tri-state would be decoration.
+    """
+    tracked = _git(REPO, "ls-files", "--error-unmatch", "--", "README.md")
+    assert tracked.returncode == 0
+
+    untracked_inside = _git(REPO, "ls-files", "--error-unmatch", "--",
+                            ".venv/nonexistent-probe.py")
+    assert untracked_inside.returncode == 1, untracked_inside.stderr
+
+    with tempfile.TemporaryDirectory() as td:          # not a repository at all
+        cannot_ask = _git(td, "ls-files", "--error-unmatch", "--", "x.py")
+        assert cannot_ask.returncode == 128, cannot_ask.stderr
+
+
+def test_owns_reports_could_not_ask_as_None_not_False():
+    """None and False are different answers and must not be merged."""
+    with tempfile.TemporaryDirectory() as td:
+        probe = Path(td) / "thing.py"
+        probe.write_text("x = 1\n")
+        assert _owns(td, [probe]) is None, "rc=128 must not read as 'not owned'"
+
+    assert _owns(REPO, [REPO / "README.md"]) is True
+    if _numpy_is_inside_this_worktree():
+        assert _owns(REPO, [NUMPY_DIR / "__init__.py"]) is False
+
+
+def test_a_tree_that_cannot_be_read_records_why_and_claims_nothing(monkeypatch):
+    """Git missing entirely: the stamp must say UNAVAILABLE, not 'no owning tree'.
+
+    This is the one that would have caught the bool guard. Note what it asserts is
+    NOT merely 'something was recorded' — it is that the stamp does not make the
+    POSITIVE claim that no git tree owns the code, which on a box without git is
+    simply false.
+    """
+    def boom(*a, **k):
+        raise FileNotFoundError("git: command not found")
+
+    monkeypatch.setattr(provenance.subprocess, "run", boom)
+    monkeypatch.delenv("ENGINE_COMMIT", raising=False)
+    sha, detail = provenance.engine_sha()
+
+    assert detail["commit"] is None
+    assert "unavailable" in detail, detail
+    assert "git" in detail["unavailable"].lower() or \
+           "filenotfound" in detail["unavailable"].lower(), detail["unavailable"]
+    assert detail["source"].startswith("UNAVAILABLE"), detail["source"]
+    assert "no owning git tree" not in detail["source"], (
+        "the stamp asserts there is no owning tree, when the truth is that it "
+        "could not ask — this is the bool-guard defect")
+    assert not sha.startswith("dist"), sha
+
+
+def test_code_provenance_survives_an_unreadable_tree(monkeypatch):
+    """A campaign must not die because provenance could not be read."""
+    def boom(*a, **k):
+        raise FileNotFoundError("git: command not found")
+
+    provenance.code_provenance.cache_clear()
+    monkeypatch.setattr(provenance.subprocess, "run", boom)
+    monkeypatch.delenv("ENGINE_COMMIT", raising=False)
+    try:
+        block = provenance.code_provenance()
+        assert block["lab_commit"] is None
+        assert block["engine_source"].startswith("UNAVAILABLE")
+        assert block["jax"], "the solver version does not come from git"
+    finally:
+        provenance.code_provenance.cache_clear()
