@@ -2,12 +2,112 @@
 
 A proposal, written 2026-08-07, off the back of the N_link ladder campaign.
 
-**Status: speculative.** The numbers below are computed, the correspondence is
-exact, and the materials are real. What is NOT here is any experimental
-expertise — this is a theory-side argument for why a particular measurement is
-worth someone's time, not a protocol. The references are cited from memory and
-**should be checked before anyone acts on this**; this session has already
-demonstrated twice what an unverified claim costs.
+**Status: RETRACTED IN PART, 2026-09-02.** Measurement 1 and the `H^2` scaling
+argument are WRONG — a Néel hopfion carries **zero net axion charge at any Hopf
+index**, by the same theorem this repo already used to void the ladder's naive arm.
+See "The retraction" immediately below before reading anything else. The rest of
+the document is left standing as written, because the point of keeping it is to
+show what the argument looked like when it was wrong.
+
+**Original status: speculative.** The numbers below are computed, the
+correspondence is exact, and the materials are real. What is NOT here is any
+experimental expertise — this is a theory-side argument for why a particular
+measurement is worth someone's time, not a protocol. The references are cited from
+memory and **should be checked before anyone acts on this**; this session has
+already demonstrated twice what an unverified claim costs.
+
+---
+
+## The retraction
+
+Raised by the null-worldtube-private session after a review with Jim; verified here
+independently before being accepted, with this repo's own numerics and a positive
+control. Script: `experiments/reference/axion_charge_identity.py`.
+
+### The identity
+
+With `div B = 0`,
+
+    grad(theta) . B = div(theta B)
+
+so the net bound charge is a **pure surface term**:
+
+    Q = (alpha/4pi^2) * closed-surface-integral of theta B.n
+
+If `theta` is single-valued and returns to a constant on the boundary, **Q = 0
+exactly, for any divergence-free B** — uniform, structured, or linking. Net charge
+requires a `theta` that is *not* single-valued: a compact angle winding around a
+string, so `theta` jumps `2pi` across a cut surface and `Q = 2pi * (flux through
+the cut)`. Q then counts the **linking of B flux with the string**.
+
+⚠ **This repo already proved this, one document over.** `NLINK_LADDER.md:407`:
+*"rho = B.grad(a) has ZERO NET under naive — identically, for uniform B and for any
+divergence-free B — while carrying the LARGEST |rho| of the three modes."* This
+proposal was written the same day and did not apply the theorem to itself.
+
+### Verified here, not taken on trust
+
+    single-valued theta = pi + 0.3 n_z, on a genuine Hopf texture
+      H = 1, 2, 2, 4    B = uniform z     Q = 0.0e+00   local |rho| L1 up to 34.5
+      H = 1, 2, 2, 4    B = curl A        Q < 3e-16     local |rho| L1 ~ 8-9
+
+    POSITIVE CONTROL — theta winding once around the z axis, B linking it
+      wrapped grad      Q = 27.7294  vs analytic 2*pi*flux 27.7474  (-0.06%)
+      naive grad        Q = 2.6e-03                    <- the voided arm
+      B ALONG the string rather than linking it        Q = 0.0e+00
+
+The control is the load-bearing part: `Q = 0` from a broken integrator is
+indistinguishable from `Q = 0` from physics, so the winding arm has to return the
+analytic answer before the zeros mean anything. It does, to 0.06%.
+
+### Why no `theta` slaved to a Néel texture can escape this
+
+The peer's argument is the linearised dynamical-axion response: `theta` is the
+k-space Chern-Simons integral, `delta_theta = delta_m5 / g` with `m5` proportional
+to the Néel component, so reversing the Néel vector takes `theta` from `pi + d` to
+`pi - d` — not around a circle. A `2pi` winding would need the band mass to pass
+through zero (the TI/NI transition), which a spin rotation does not do. That
+argument is sound and is **not** independently checked here; it rests on
+[Li, Wang, Qi, Zhang arXiv:0908.1537] and [arXiv:1906.07891] as cited.
+
+**The topology says something stronger, and it does not depend on the
+linearisation.** Homotopy classes of continuous maps into a circle are
+`[X, S^1] = H^1(X; Z)`, and `H^1(S^2; Z) = 0`. So **every** continuous
+`theta(n)` defined on the target sphere is null-homotopic and therefore lifts to a
+single-valued real function — no matter how nonlinear the slaving is. Any `theta`
+that is a function of the *local Néel direction alone* is single-valued on `R^3`
+whenever the texture is, and Q = 0 follows. The failure is not that this particular
+response happens not to wind; it is that no pointwise slaving to a unit-vector
+texture *can* wind.
+
+The escape is therefore not a better material or a stronger response. It is a
+different order parameter: one with a genuinely circle-valued component, i.e. a
+**phase-vortex line threaded by flux**, which is EHN's geometry — two distinct
+strings, one carrying a compact phase. A magnetic hopfion is a single-field `pi_3`
+texture with no compact angle and no string.
+
+### What falls, and what does not
+
+| claim | status |
+|---|---|
+| Measurement 1, "charge proportional to Hopf index" | **RETRACTED.** Net charge is zero at any H. |
+| "charge ~ H so Coulomb ~ H^2" | **RETRACTED**, it rests on measurement 1. |
+| "the same equation with a different prefactor" | **True of the local density, false of the integral.** EHN's floor depends on a LOCKED INTEGRAL charge, and that is exactly the part that does not carry over. |
+| Measurement 2, index-dependent resonance splitting | **NOT killed.** A neutral multipole still has Coulomb self-energy — the same distinction as the 2026-08-07 correction in `NLINK_LADDER.md`: `sum(rho) = 0` does not make `sum(rho*A0) = 0`. But it has lost its `H^2` scaling and therefore its motivation, and at 1e-3..1e-5 it now needs a separate argument for why it is resolvable against other H-dependent energies. |
+| Measurement 3, the sign | Survives only as far as measurement 2 does. |
+| The energy-scale arithmetic (`alpha/4pi^2` ~ 2e6 weaker than C = 400) | Unaffected. |
+| The ladder and stabiliser results | Untouched. Nothing else in the repo depends on this document. |
+
+⚠ **The proposal's own falsifier was already decided before it was written.** The
+closing section below says the premise fails "if the bound charge on a hopfion turns
+out NOT to scale with the Hopf index" and calls that "a single measurement and it is
+the first one to do." The identity settles it with no measurement at all. A
+falsifier that an existing theorem already answers is not a test, and this is the
+second time in this campaign that a check turned out to be decidable in advance —
+the first was the `c4`-vs-`C` scan whose control could not fail
+(`STABILISER_COMPARISON.md`).
+
+---
 
 ## Why bother
 
@@ -35,6 +135,12 @@ literally EHN's formula. Their `C a F F~` is the term condensed matter calls the
 magnetoelectric response.
 
 This is not "similar physics". It is the same equation with a different prefactor.
+
+⚠ **True of the local density and false of the integral** — see "The retraction".
+EHN's stabiliser is a LOCKED INTEGRAL charge counting the linking of flux with a
+phase string. A Néel texture supplies the local `grad(theta).B` and supplies no
+string, so its integral is zero. Sharing a formula for `rho` is not sharing the
+quantity the floor is made of.
 
 ## Where the field already is
 
@@ -93,10 +199,13 @@ thick enough for a 3D hopfion while still being a film.
 
 Measure, in order of decreasing confidence:
 
-1. **Charge proportional to Hopf index.** The direct signature, 1-12 e, by charge
-   sensing / Kelvin probe / STM.
+1. ~~**Charge proportional to Hopf index.** The direct signature, 1-12 e, by charge
+   sensing / Kelvin probe / STM.~~ **RETRACTED — see "The retraction". The net
+   charge is zero at every Hopf index.**
 2. **An H^2-dependent splitting** in the resonance spectrum between sectors that
-   are degenerate without the magnetoelectric term.
+   are degenerate without the magnetoelectric term. ⚠ The `H^2` is retracted with
+   item 1; a splitting from a neutral multipole is not excluded, but nothing
+   predicts its scaling.
 3. **Its sign** — whether charge binding stabilises or destabilises higher index.
    This is the one that speaks to EHN's floor, because their whole mechanism is
    that charge binding STABILISES, and more of it stabilises more.
@@ -133,8 +242,16 @@ ingredient directly is arguably the more informative move.
 
 ## What would falsify the premise
 
+⚠ **ANSWERED, 2026-09-02, with no measurement — see "The retraction" at the top.**
+The paragraph below stands as written so the record shows what was proposed.
+
 If the bound charge on a hopfion turns out NOT to scale with the Hopf index — if
 it tracks, say, only the total winding of the boundary or the sample
 magnetisation — then the "topological charge binding" framing is wrong and the
 correspondence to EHN's rho is superficial. That is a single measurement and it
 is the first one to do.
+
+The bound charge does not scale with the Hopf index. It is zero at every Hopf
+index. **The correspondence to EHN's rho is superficial** in exactly the way this
+paragraph named — the local densities share a form, and the integral charge EHN's
+floor is built on does not carry over at all.
